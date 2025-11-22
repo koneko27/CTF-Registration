@@ -39,11 +39,21 @@ async function init() {
 	applyUserToUI();
 
 	const initialPage = window.location.hash.replace('#', '') || 'home';
-	showPage(initialPage);
+	if (initialPage.startsWith('reset-password')) {
+		// handleResetPasswordRoute(); // Deleted
+		showPage('not-found');
+	} else {
+		showPage(initialPage);
+	}
 
 	window.addEventListener('hashchange', () => {
 		const page = window.location.hash.replace('#', '') || 'home';
-		showPage(page);
+		if (page.startsWith('reset-password')) {
+			// handleResetPasswordRoute(); // Deleted
+			showPage('not-found');
+		} else {
+			showPage(page);
+		}
 	});
 }
 
@@ -196,11 +206,9 @@ async function buildCompetitionPayload(form) {
 
 async function refreshSession() {
 	try {
-		const data = await apiRequest('get_current_user.php');
-		state.currentUser = data.user;
-		if (data.csrf_token) {
-			state.csrfToken = data.csrf_token;
-		}
+		const data = await apiRequest('get_current_user.php', { requireCsrf: false });
+		state.currentUser = data.user ?? null;
+		state.csrfToken = data.csrf_token ?? null;
 	} catch (err) {
 		state.currentUser = null;
 		state.csrfToken = null;
@@ -244,12 +252,14 @@ function updateAuthVisibility() {
 	const profileLink = document.querySelector('.nav-link[data-page="profile"]');
 	const dashboardLink = document.querySelector('.nav-link[data-page="dashboard"]');
 	const adminLink = document.getElementById('admin-link');
+	const homeLink = document.querySelector('.nav-link[data-page="home"]');
 
 	if (signinLink) signinLink.style.display = authed ? 'none' : '';
 	if (signupLink) signupLink.style.display = authed ? 'none' : '';
 	if (logoutLink) logoutLink.style.display = authed ? '' : 'none';
 	if (profileLink) profileLink.style.display = authed ? '' : 'none';
 	if (dashboardLink) dashboardLink.style.display = authed ? '' : 'none';
+	if (homeLink) homeLink.style.display = authed ? 'none' : '';
 	if (adminLink) {
 		adminLink.style.display = authed && state.currentUser?.role === 'admin' ? '' : 'none';
 	}
@@ -914,6 +924,9 @@ function setDocumentTitle(pageId) {
 		profile: 'Profile Management - Koneko CTF',
 		signin: 'Sign In - Koneko CTF',
 		signup: 'Sign Up - Koneko CTF',
+		'forgot-password': 'Forgot Password - Koneko CTF',
+		'reset-password': 'Reset Password - Koneko CTF',
+		'not-found': 'Page Not Found - Koneko CTF',
 	};
 	document.title = titles[pageId] || 'Koneko CTF';
 }
@@ -925,6 +938,7 @@ function wireAuthForms() {
 			event.preventDefault();
 			const identifier = signinForm.querySelector('input[name="identifier"]')?.value.trim() || '';
 			const password = signinForm.querySelector('input[name="password"]')?.value || '';
+			const rememberMe = signinForm.querySelector('input[name="rememberMe"]')?.checked || false;
 
 			if (!identifier || !password) {
 				notify('Email/username and password are required', 'error');
@@ -934,7 +948,7 @@ function wireAuthForms() {
 			try {
 				const data = await apiRequest('signin.php', {
 					method: 'POST',
-					body: { identifier, password },
+					body: { identifier, password, rememberMe },
 				});
 				state.currentUser = data.user;
 				if (data.csrf_token) {
@@ -947,6 +961,75 @@ function wireAuthForms() {
 			} catch (err) {
 				notify(err.message, 'error');
 			}
+		});
+	}
+
+	// Terms of Service and Privacy Policy Modal Logic
+	const policyLinks = document.querySelectorAll('.policy-link');
+	const policyModal = document.getElementById('policyModal');
+	const closePolicyModal = document.getElementById('closePolicyModal');
+	const policyModalTitle = document.getElementById('policyModalTitle');
+	const policyModalBody = document.getElementById('policyModalBody');
+
+	const policies = {
+		tos: {
+			title: 'Terms of Service',
+			content: `
+				<h3>1. Acceptance of Terms</h3>
+				<p>By accessing and using Koneko CTF, you accept and agree to be bound by the terms and provision of this agreement.</p>
+				
+				<h3>2. User Conduct</h3>
+				<p>You agree to use the platform only for lawful purposes. You are prohibited from violating any applicable laws, regulations, or third-party rights.</p>
+				
+				<h3>3. Competition Rules</h3>
+				<p>Participants must adhere to the specific rules of each competition. Cheating, sharing flags, or attacking the platform infrastructure is strictly prohibited and will result in immediate disqualification.</p>
+				
+				<h3>4. Intellectual Property</h3>
+				<p>All content provided on this platform is the property of Koneko CTF or its content suppliers and protected by international copyright laws.</p>
+				
+				<h3>5. Termination</h3>
+				<p>We reserve the right to terminate or suspend access to our service immediately, without prior notice or liability, for any reason whatsoever.</p>
+			`
+		},
+		privacy: {
+			title: 'Privacy Policy',
+			content: `
+				<h3>1. Information Collection</h3>
+				<p>We collect information you provide directly to us, such as when you create an account, participate in a competition, or communicate with us. This may include your name, email address, and username.</p>
+				
+				<h3>2. Use of Information</h3>
+				<p>We use the information we collect to operate, maintain, and improve our services, to communicate with you, and to manage competitions.</p>
+				
+				<h3>3. Data Security</h3>
+				<p>We implement reasonable security measures to protect your information. However, no security system is impenetrable and we cannot guarantee the security of our systems 100%.</p>
+				
+				<h3>4. Cookies</h3>
+				<p>We use cookies to maintain your session and improve your experience. You can control cookie settings through your browser.</p>
+				
+				<h3>5. Changes to This Policy</h3>
+				<p>We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page.</p>
+			`
+		}
+	};
+
+	if (policyModal && closePolicyModal) {
+		const close = () => policyModal.classList.remove('active');
+		
+		closePolicyModal.addEventListener('click', close);
+		policyModal.addEventListener('click', (e) => {
+			if (e.target === policyModal) close();
+		});
+
+		policyLinks.forEach(link => {
+			link.addEventListener('click', (e) => {
+				e.preventDefault();
+				const type = link.dataset.type;
+				if (policies[type]) {
+					policyModalTitle.textContent = policies[type].title;
+					policyModalBody.innerHTML = policies[type].content;
+					policyModal.classList.add('active');
+				}
+			});
 		});
 	}
 
@@ -1736,8 +1819,49 @@ async function performSignOut() {
 	window.location.hash = 'signin';
 }
 
+async function ensureCsrfToken() {
+	if (state.csrfToken) {
+		return state.csrfToken;
+	}
+
+	try {
+		const response = await fetch('api/get_current_user.php', {
+			credentials: 'include',
+		});
+		let data = {};
+		try {
+			data = await response.json();
+		} catch (err) {
+			data = {};
+		}
+
+		if (response.ok) {
+			if (Object.prototype.hasOwnProperty.call(data, 'csrf_token')) {
+				state.csrfToken = data.csrf_token || null;
+			}
+			if (Object.prototype.hasOwnProperty.call(data, 'user')) {
+				state.currentUser = data.user ?? null;
+			}
+			return state.csrfToken;
+		}
+	} catch (err) {
+		console.error('Failed to refresh CSRF token', err);
+	}
+
+	return null;
+}
+
 async function apiRequest(path, options = {}) {
-	const opts = { credentials: 'include', ...options };
+	const opts = { credentials: 'include', requireCsrf: true, ...options };
+	const method = (opts.method || 'GET').toUpperCase();
+	const safeMethod = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+
+	if (opts.requireCsrf && !safeMethod) {
+		const token = await ensureCsrfToken();
+		if (!token) {
+			throw new Error('Unable to verify request. Please refresh and try again.');
+		}
+	}
 
 	const headers = opts.headers || {};
 	if (opts.body && opts.json !== false) {
@@ -1747,11 +1871,12 @@ async function apiRequest(path, options = {}) {
 		delete opts.json;
 	}
 
-	if (state.csrfToken) {
+	if (opts.requireCsrf && state.csrfToken) {
 		headers['X-CSRF-Token'] = state.csrfToken;
 	}
 	
 	opts.headers = headers;
+	delete opts.requireCsrf;
 
 	const response = await fetch(`api/${path}`, opts);
 	let data = {};
@@ -1799,37 +1924,46 @@ function showCompetitionToast(message, type = 'info') {
 }
 
 function calculatePasswordStrength(password) {
-	if (!password) return { strength: 0, label: 'Weak', color: '#dc3545' };
-	
 	let score = 0;
-	const checks = {
-		length: password.length >= 12 && password.length <= 128,
-		lengthGood: password.length >= 16,
-		uppercase: /[A-Z]/.test(password),
-		lowercase: /[a-z]/.test(password),
-		number: /[0-9]/.test(password),
-		special: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~`]/.test(password),
-	};
-	
-	if (checks.length) score += 1;
-	if (checks.lengthGood) score += 1;
-	if (checks.uppercase) score += 1;
-	if (checks.lowercase) score += 1;
-	if (checks.number) score += 1;
-	if (checks.special) score += 1;
-	
+	if (!password) return { score: 0, label: 'Weak', color: '#dc3545', percentage: 0 };
+
+	// Client-side estimation (mirrors server logic for instant feedback)
+	if (password.length >= 12) score++;
+	if (password.length >= 16) score++;
+	if (/[A-Z]/.test(password)) score++;
+	if (/[a-z]/.test(password)) score++;
+	if (/[0-9]/.test(password)) score++;
+	if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~`]/.test(password)) score++;
+
+	const common = ['password', '123456', '12345678', 'qwerty', 'admin'];
+	if (common.includes(password.toLowerCase())) score = 0;
+
+	let label = 'Weak';
+	let color = '#dc3545';
+	let percentage = 25;
+
 	if (score <= 2) {
-		return { strength: 25, label: 'Weak', color: '#dc3545' };
+		percentage = 25;
+		label = 'Weak';
+		color = '#dc3545';
 	} else if (score <= 4) {
-		return { strength: 50, label: 'Fair', color: '#ffc107' };
+		percentage = 50;
+		label = 'Fair';
+		color = '#ffc107';
 	} else if (score <= 5) {
-		return { strength: 75, label: 'Good', color: '#17a2b8' };
+		percentage = 75;
+		label = 'Good';
+		color = '#17a2b8';
 	} else {
-		return { strength: 100, label: 'Strong', color: '#28a745' };
+		percentage = 100;
+		label = 'Strong';
+		color = '#28a745';
 	}
+
+	return { score, label, color, percentage };
 }
 
-function updatePasswordStrength(password) {
+async function updatePasswordStrength(password) {
 	const signupForm = document.getElementById('signup-form');
 	if (!signupForm) return;
 	
@@ -1837,12 +1971,35 @@ function updatePasswordStrength(password) {
 	const strengthText = signupForm.querySelector('.strength-text');
 	
 	if (!strengthBar || !strengthText) return;
+
+	if (!password) {
+		strengthBar.style.width = '0%';
+		strengthText.textContent = 'Password strength: Weak';
+		strengthText.style.color = '#dc3545';
+		return;
+	}
 	
-	const result = calculatePasswordStrength(password);
-	strengthBar.style.width = result.strength + '%';
-	strengthBar.style.background = result.color;
-	strengthText.textContent = `Password strength: ${result.label}`;
-	strengthText.style.color = result.color;
+	// Server-side validation (Authoritative)
+	try {
+		const response = await fetch('api/check_password_strength.php', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ password })
+		});
+		
+		if (response.ok) {
+			const data = await response.json();
+			strengthBar.style.width = data.percentage + '%';
+			strengthBar.style.background = data.color;
+			strengthText.textContent = `Password strength: ${data.label}`;
+			strengthText.style.color = data.color;
+		}
+	} catch (e) {
+		// Fallback to client-side if server fails/offline
+		// (Already handled by immediate update in input listener)
+	}
 }
 
 function setupPasswordToggles() {
@@ -1871,22 +2028,44 @@ function setupPasswordStrength() {
 	let isSetup = passwordInput.dataset.strengthSetup === 'true';
 	if (isSetup) return;
 	
+	let debounceTimer;
 	passwordInput.addEventListener('input', (e) => {
-		updatePasswordStrength(e.target.value);
+		const val = e.target.value;
+
+		// 1. Immediate Client-Side Feedback (For "Instant" feel)
+		const est = calculatePasswordStrength(val);
+		const signupForm = document.getElementById('signup-form');
+		if (signupForm) {
+			const strengthBar = signupForm.querySelector('.strength-fill');
+			const strengthText = signupForm.querySelector('.strength-text');
+			if (strengthBar && strengthText) {
+				strengthBar.style.width = est.percentage + '%';
+				strengthBar.style.background = est.color;
+				strengthText.textContent = `Password strength: ${est.label}`;
+				strengthText.style.color = est.color;
+			}
+		}
+
+		// 2. Debounced Server-Side Validation (For Accuracy/Security)
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => {
+			updatePasswordStrength(val);
+		}, 300);
 	});
 	
 	passwordInput.addEventListener('keyup', (e) => {
-		updatePasswordStrength(e.target.value);
+		// Handled by input event
 	});
 	
 	passwordInput.addEventListener('paste', (e) => {
-		setTimeout(() => {
-			updatePasswordStrength(e.target.value);
-		}, 10);
+		// Handled by input event (which triggers on paste too usually)
 	});
 	
 	passwordInput.dataset.strengthSetup = 'true';
-	updatePasswordStrength(passwordInput.value);
+	// Initial check
+	if (passwordInput.value) {
+		passwordInput.dispatchEvent(new Event('input'));
+	}
 }
 
 function setupCompetitionFilters() {

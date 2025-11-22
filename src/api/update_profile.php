@@ -17,7 +17,7 @@ try {
 	if ($fullNameValue !== null) {
 		$fullName = sanitize_string($fullNameValue);
 		if (!validate_full_name($fullName)) {
-			json_response(400, ['error' => 'Full name must be 1-100 characters and cannot contain special characters']);
+			json_response(400, ['error' => 'Full name must be 1-30 characters and cannot contain special characters']);
 		}
 		$updates[] = 'full_name = :full_name';
 		$params['full_name'] = $fullName;
@@ -88,6 +88,9 @@ try {
 
 		$updates[] = 'password_hash = :password_hash';
 		$params['password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+
+		// Invalidate other sessions
+		$updates[] = 'token_version = token_version + 1';
 		$passwordChanged = true;
 	}
 
@@ -103,7 +106,7 @@ try {
 		}
 	}
 
-	$allowedFields = ['full_name', 'email', 'location', 'bio', 'password_hash'];
+	$allowedFields = ['full_name', 'email', 'location', 'bio', 'password_hash', 'token_version'];
 	$sanitizedUpdates = [];
 	foreach ($updates as $update) {
 		$fieldName = explode(' =', $update)[0] ?? '';
@@ -116,9 +119,15 @@ try {
 		json_response(400, ['error' => 'No valid fields to update']);
 	}
 
-	$sql = 'UPDATE users SET ' . implode(', ', $sanitizedUpdates) . ', updated_at = NOW() WHERE id = :id';
+	$sql = 'UPDATE users SET ' . implode(', ', $sanitizedUpdates) . ', updated_at = NOW() WHERE id = :id RETURNING token_version';
 	$stmt = $pdo->prepare($sql);
 	$stmt->execute($params);
+	$newTokenVersion = $stmt->fetchColumn();
+
+	// Update current session token version if password changed, so this user isn't logged out
+	if ($passwordChanged && $newTokenVersion) {
+		$_SESSION['token_version'] = (int)$newTokenVersion;
+	}
 
 	$updatedUser = getUserById((int) $user['id']);
 	if ($updatedUser) {

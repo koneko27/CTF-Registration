@@ -37,9 +37,11 @@ function get_pdo(): PDO {
 			$pdo->exec("SET TIME ZONE 'Asia/Jakarta'");
 			return $pdo;
 		} catch (Exception $e) {
-			throw $e;
+			error_log('Database connection failed: ' . $e->getMessage());
+			throw new Exception('Database connection failed. Please try again later.');
 		}
 	}
 
-	throw new Exception('Invalid DATABASE_URL configuration');
+	error_log('Invalid DATABASE_URL configuration detected');
+	throw new Exception('Database configuration error.');
 }

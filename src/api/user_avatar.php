@@ -21,8 +21,10 @@ try {
 	$avatar = $stmt->fetch(PDO::FETCH_ASSOC);
 	
 	if (!$avatar || $avatar['avatar_data'] === null) {
-		http_response_code(404);
-		echo 'Not found';
+		// Return default transparent 1x1 pixel to prevent user enumeration
+		header('Content-Type: image/png');
+		header('Cache-Control: public, max-age=3600');
+		echo base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
 		exit;
 	}
 

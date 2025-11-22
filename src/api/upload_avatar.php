@@ -6,6 +6,11 @@ require_once __DIR__ . '/utils.php';
 ensure_http_method('POST');
 $user = require_authenticated_user();
 
+$rateLimitKey = 'upload_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+if (!check_rate_limit($rateLimitKey, 5, 600)) { // 5 uploads per 10 minutes
+	json_response(429, ['error' => 'Too many upload attempts. Please try again later.']);
+}
+
 if (!isset($_FILES['avatar']) || !is_array($_FILES['avatar'])) {
 	json_response(400, ['error' => 'Avatar upload is required']);
 }

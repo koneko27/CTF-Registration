@@ -6,7 +6,7 @@ require_once __DIR__ . '/utils.php';
 ensure_http_method('POST');
 
 $rateLimitKey = 'signup_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-if (!check_rate_limit($rateLimitKey, 3, 3600)) {
+if (!check_rate_limit($rateLimitKey, 5, 3600)) {
 	$remaining = get_rate_limit_remaining($rateLimitKey);
 	json_response(429, ['error' => 'Too many registration attempts. Please try again later.', 'retry_after' => 3600]);
 }
@@ -24,19 +24,23 @@ if ($fullName === '' || $email === '' || $username === '' || $password === '' ||
 }
 
 if (!validate_full_name($fullName)) {
-	json_response(400, ['error' => 'Full name must be 1-100 characters and cannot contain special characters']);
+	json_response(400, ['error' => 'Full name must be 1-30 characters and cannot contain special characters']);
 }
 
 if (!validate_email($email)) {
 	json_response(400, ['error' => 'Invalid email format']);
 }
 
-if (!validate_username($username)) {
-	json_response(400, ['error' => 'Username must be 3-32 characters and alphanumeric/underscore only']);
+if (!preg_match('/@(gmail\.com|binus\.ac\.id)$/iD', $email)) {
+	json_response(400, ['error' => 'Registration is restricted to @gmail.com or @binus.ac.id emails only']);
 }
 
-if (strlen($password) < 12 || strlen($password) > 128) {
-	json_response(400, ['error' => 'Password must be between 12 and 128 characters']);
+if (!validate_username($username)) {
+	json_response(400, ['error' => 'Username must be 3-30 characters and alphanumeric/underscore only']);
+}
+
+if (strlen($password) < 12 || strlen($password) > 30) {
+	json_response(400, ['error' => 'Password must be between 12 and 30 characters']);
 }
 
 if (!preg_match('/[A-Z]/', $password) || !preg_match('/[a-z]/', $password) || !preg_match('/[0-9]/', $password) || !preg_match('/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~`]/', $password)) {
@@ -69,7 +73,8 @@ try {
 	json_response(201, ['message' => 'Account created successfully']);
 } catch (PDOException $e) {
 	if ($e->getCode() === '23505') {
-		json_response(409, ['error' => 'Email or username already exists']);
+		error_log('signup duplicate detected: ' . $e->getMessage());
+		json_response(400, ['error' => 'Unable to create account. Please check your details and try again.']);
 	}
 
 	error_log('signup failed: ' . $e->getMessage());

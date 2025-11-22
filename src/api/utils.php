@@ -57,7 +57,7 @@ function sanitize_string(?string $value): string {
 }
 
 function validate_full_name(string $name): bool {
-	if (strlen($name) < 1 || strlen($name) > 100) {
+	if (strlen($name) < 1 || strlen($name) > 30) {
 		return false;
 	}
 	if (preg_match('/[<>"\']/', $name)) {
@@ -67,7 +67,7 @@ function validate_full_name(string $name): bool {
 }
 
 function validate_username(string $username): bool {
-	return preg_match('/^[A-Za-z0-9_]{3,32}$/', $username) === 1;
+	return preg_match('/^[A-Za-z0-9_]{3,30}$/', $username) === 1;
 }
 
 function validate_email(string $email): bool {
@@ -84,12 +84,27 @@ function ensure_csrf_token(): void {
 }
 
 function verify_csrf_token(): void {
-	$headers = getallheaders();
+	static $verified = false;
+	if ($verified) {
+		return;
+	}
+
+	if (session_status() !== PHP_SESSION_ACTIVE) {
+		start_secure_session();
+	}
+
+	$headers = function_exists('getallheaders') ? getallheaders() : [];
+	if (!$headers && isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
+		$headers['X-CSRF-Token'] = $_SERVER['HTTP_X_CSRF_TOKEN'];
+	}
+
 	$token = $headers['X-CSRF-Token'] ?? $_POST['csrf_token'] ?? '';
 	
 	if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
 		json_response(403, ['error' => 'Invalid CSRF token']);
 	}
+
+	$verified = true;
 }
 
 function start_secure_session(): void {
@@ -110,10 +125,18 @@ function start_secure_session(): void {
 }
 
 function ensure_http_method(string ...$allowed): void {
-	$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-	if (!in_array($method, $allowed, true)) {
-		header('Allow: ' . implode(', ', $allowed));
+	$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+	$normalizedAllowed = array_map('strtoupper', $allowed);
+
+	if (!in_array($method, $normalizedAllowed, true)) {
+		header('Allow: ' . implode(', ', $normalizedAllowed));
 		json_response(405, ['error' => 'Method Not Allowed']);
+	}
+
+	$unsafeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+	if (in_array($method, $unsafeMethods, true)) {
+		start_secure_session();
+		verify_csrf_token();
 	}
 }
 
@@ -121,16 +144,60 @@ function getCurrentUser(): ?array {
 	start_secure_session();
 
 	$userId = $_SESSION['user_id'] ?? null;
+	$sessionTokenVersion = $_SESSION['token_version'] ?? 0;
+
+	$pdo = get_pdo();
+
+	// Attempt Remember Me login if session is missing
+	if (!$userId && isset($_COOKIE['remember_me'])) {
+		$parts = explode(':', $_COOKIE['remember_me']);
+		if (count($parts) === 2) {
+			$selector = $parts[0];
+			$validator = $parts[1];
+			
+			try {
+				// Ensure tables exist before checking (if not already)
+				// ensure_required_tables($pdo); // Can be expensive to call every time, rely on init or catch
+				
+				$stmt = $pdo->prepare('SELECT user_id, hashed_validator, expires_at FROM user_sessions WHERE selector = :selector');
+				$stmt->execute([':selector' => $selector]);
+				$rememberSession = $stmt->fetch(PDO::FETCH_ASSOC);
+
+				if ($rememberSession && strtotime($rememberSession['expires_at']) > time()) {
+					if (hash_equals($rememberSession['hashed_validator'], hash('sha256', $validator))) {
+						$uStmt = $pdo->prepare('SELECT id, role, token_version FROM users WHERE id = :id');
+						$uStmt->execute([':id' => $rememberSession['user_id']]);
+						$userFound = $uStmt->fetch(PDO::FETCH_ASSOC);
+						
+						if ($userFound) {
+							loginUser((int)$userFound['id'], (string)$userFound['role'], (int)($userFound['token_version'] ?? 1));
+							$userId = $_SESSION['user_id'];
+							$sessionTokenVersion = $_SESSION['token_version'];
+						}
+					}
+				}
+			} catch (Throwable $e) {
+				// Ignore DB errors during remember me check
+			}
+		}
+	}
+
 	if (!$userId) {
 		return null;
 	}
 
-	$pdo = get_pdo();
-	$stmt = $pdo->prepare('SELECT id, full_name, email, username, avatar_updated_at, CASE WHEN avatar_data IS NOT NULL THEN 1 ELSE 0 END AS has_avatar, bio, location, role, created_at, updated_at FROM users WHERE id = ?');
+	$stmt = $pdo->prepare('SELECT id, full_name, email, username, avatar_updated_at, CASE WHEN avatar_data IS NOT NULL THEN 1 ELSE 0 END AS has_avatar, bio, location, role, token_version, created_at, updated_at FROM users WHERE id = ?');
 	$stmt->execute([$userId]);
 	$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 	if (!$user) {
+		logoutUser();
+		return null;
+	}
+
+	// Check if session token version matches DB
+	$dbTokenVersion = (int)($user['token_version'] ?? 1);
+	if ($sessionTokenVersion !== $dbTokenVersion) {
 		logoutUser();
 		return null;
 	}
@@ -167,10 +234,11 @@ function getUserById(int $userId): ?array {
 	return $user ?: null;
 }
 
-function loginUser(int $userId, string $role): void {
+function loginUser(int $userId, string $role, int $tokenVersion = 1): void {
 	start_secure_session();
 	$_SESSION['user_id'] = $userId;
 	$_SESSION['user_role'] = $role;
+	$_SESSION['token_version'] = $tokenVersion;
 	session_regenerate_id(true);
 }
 
@@ -248,9 +316,9 @@ function ensure_required_tables(PDO $pdo): void {
 	$ddl = [
 		"CREATE TABLE IF NOT EXISTS users (
 			id SERIAL PRIMARY KEY,
-			full_name VARCHAR(100) NOT NULL,
+			full_name VARCHAR(30) NOT NULL,
 			email VARCHAR(255) NOT NULL UNIQUE,
-			username VARCHAR(50) NOT NULL UNIQUE,
+			username VARCHAR(30) NOT NULL UNIQUE,
 			password_hash VARCHAR(255) NOT NULL,
 			role VARCHAR(20) NOT NULL DEFAULT 'user',
 			avatar_data BYTEA DEFAULT NULL,
@@ -258,6 +326,7 @@ function ensure_required_tables(PDO $pdo): void {
 			avatar_updated_at TIMESTAMP DEFAULT NULL,
 			bio TEXT DEFAULT NULL,
 			location VARCHAR(100) DEFAULT NULL,
+			token_version INTEGER NOT NULL DEFAULT 1,
 			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		)",
@@ -308,11 +377,42 @@ function ensure_required_tables(PDO $pdo): void {
 			metadata JSONB DEFAULT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		)",
-		"CREATE INDEX IF NOT EXISTS idx_user_activity_user_created ON user_activity (user_id, created_at DESC)"
+		"CREATE INDEX IF NOT EXISTS idx_user_activity_user_created ON user_activity (user_id, created_at DESC)",
+		"CREATE TABLE IF NOT EXISTS user_sessions (
+			id BIGSERIAL PRIMARY KEY,
+			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			selector VARCHAR(255) NOT NULL,
+			hashed_validator VARCHAR(255) NOT NULL,
+			expires_at TIMESTAMP NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			UNIQUE(selector)
+		)",
+		"CREATE TABLE IF NOT EXISTS password_resets (
+			id BIGSERIAL PRIMARY KEY,
+			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			token_hash VARCHAR(255) NOT NULL,
+			expires_at TIMESTAMP NOT NULL,
+			used BOOLEAN NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)",
+		"CREATE TABLE IF NOT EXISTS rate_limits (
+			id BIGSERIAL PRIMARY KEY,
+			rate_key VARCHAR(255) NOT NULL,
+			attempt_at INTEGER NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)",
+		"CREATE INDEX IF NOT EXISTS idx_rate_limits_key_time ON rate_limits (rate_key, attempt_at)"
 	];
 
 	foreach ($ddl as $sql) {
 		$pdo->exec($sql);
+	}
+	
+	// Ensure token_version exists for existing databases
+	try {
+		$pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 1");
+	} catch (Exception $e) {
+		// Ignore if already exists or other minor error
 	}
 
 	$ensured = true;
@@ -450,31 +550,65 @@ function compute_competition_status(string $startDate, string $endDate, string $
 }
 
 function check_rate_limit(string $key, int $maxAttempts = 5, int $windowSeconds = 300): bool {
-	start_secure_session();
-	$rateLimitKey = 'rate_limit_' . $key;
-	$attempts = $_SESSION[$rateLimitKey] ?? [];
-	$now = time();
-	$attempts = array_filter($attempts, function($timestamp) use ($now, $windowSeconds) {
-		return ($now - $timestamp) < $windowSeconds;
-	});
-	
-	if (count($attempts) >= $maxAttempts) {
-		return false;
+	try {
+		$pdo = get_pdo();
+		ensure_required_tables($pdo); // Ensure table exists
+		
+		$rateLimitKey = 'rate_limit_' . $key;
+		$now = time();
+		$windowStart = $now - $windowSeconds;
+
+		// Cleanup old records occasionally (1% chance)
+		if (rand(1, 100) === 1) {
+			$cleanup = $pdo->prepare("DELETE FROM rate_limits WHERE attempt_at < :window_start");
+			$cleanup->execute([':window_start' => $now - 3600]); // Clean older than 1 hour
+		}
+
+		// Count attempts in window
+		$stmt = $pdo->prepare("SELECT COUNT(*) FROM rate_limits WHERE rate_key = :key AND attempt_at > :window_start");
+		$stmt->execute([
+			':key' => $rateLimitKey,
+			':window_start' => $windowStart
+		]);
+		$count = (int) $stmt->fetchColumn();
+
+		if ($count >= $maxAttempts) {
+			return false;
+		}
+
+		// Record new attempt
+		$insert = $pdo->prepare("INSERT INTO rate_limits (rate_key, attempt_at) VALUES (:key, :now)");
+		$insert->execute([
+			':key' => $rateLimitKey,
+			':now' => $now
+		]);
+
+		return true;
+	} catch (Throwable $e) {
+		// Fallback to session if DB fails (fail-open for usability, or fail-closed for security)
+		// Using fail-open here but logging error
+		error_log('Rate limit DB error: ' . $e->getMessage());
+		return true; 
 	}
-	
-	$attempts[] = $now;
-	$_SESSION[$rateLimitKey] = $attempts;
-	return true;
 }
 
 function get_rate_limit_remaining(string $key): int {
-	start_secure_session();
-	$rateLimitKey = 'rate_limit_' . $key;
-	$attempts = $_SESSION[$rateLimitKey] ?? [];
-	$now = time();
-	$windowSeconds = 300;
-	$validAttempts = array_filter($attempts, function($timestamp) use ($now, $windowSeconds) {
-		return ($now - $timestamp) < $windowSeconds;
-	});
-	return max(0, 5 - count($validAttempts));
+	try {
+		$pdo = get_pdo();
+		$rateLimitKey = 'rate_limit_' . $key;
+		$windowSeconds = 300; // Default assumed from check_rate_limit usage
+		$now = time();
+		$windowStart = $now - $windowSeconds;
+
+		$stmt = $pdo->prepare("SELECT COUNT(*) FROM rate_limits WHERE rate_key = :key AND attempt_at > :window_start");
+		$stmt->execute([
+			':key' => $rateLimitKey,
+			':window_start' => $windowStart
+		]);
+		$count = (int) $stmt->fetchColumn();
+
+		return max(0, 5 - $count); // Assuming default max 5
+	} catch (Throwable $e) {
+		return 0;
+	}
 }
