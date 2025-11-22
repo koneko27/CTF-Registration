@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', init);
 async function init() {
 	initThemeToggle();
 	setupPasswordToggles();
+	setupPasswordStrength();
 	setupCompetitionFilters();
 	setupNavigation();
 	wireAuthForms();
@@ -889,6 +890,12 @@ function showPage(pageId) {
 		state.currentPage = pageId;
 		setActiveNavLink(pageId);
 		setDocumentTitle(pageId);
+		
+		if (pageId === 'signup') {
+			setTimeout(() => {
+				setupPasswordStrength();
+			}, 100);
+		}
 	}
 }
 
@@ -1791,6 +1798,53 @@ function showCompetitionToast(message, type = 'info') {
 	notify(message, map[type] || 'info');
 }
 
+function calculatePasswordStrength(password) {
+	if (!password) return { strength: 0, label: 'Weak', color: '#dc3545' };
+	
+	let score = 0;
+	const checks = {
+		length: password.length >= 12 && password.length <= 128,
+		lengthGood: password.length >= 16,
+		uppercase: /[A-Z]/.test(password),
+		lowercase: /[a-z]/.test(password),
+		number: /[0-9]/.test(password),
+		special: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~`]/.test(password),
+	};
+	
+	if (checks.length) score += 1;
+	if (checks.lengthGood) score += 1;
+	if (checks.uppercase) score += 1;
+	if (checks.lowercase) score += 1;
+	if (checks.number) score += 1;
+	if (checks.special) score += 1;
+	
+	if (score <= 2) {
+		return { strength: 25, label: 'Weak', color: '#dc3545' };
+	} else if (score <= 4) {
+		return { strength: 50, label: 'Fair', color: '#ffc107' };
+	} else if (score <= 5) {
+		return { strength: 75, label: 'Good', color: '#17a2b8' };
+	} else {
+		return { strength: 100, label: 'Strong', color: '#28a745' };
+	}
+}
+
+function updatePasswordStrength(password) {
+	const signupForm = document.getElementById('signup-form');
+	if (!signupForm) return;
+	
+	const strengthBar = signupForm.querySelector('.strength-fill');
+	const strengthText = signupForm.querySelector('.strength-text');
+	
+	if (!strengthBar || !strengthText) return;
+	
+	const result = calculatePasswordStrength(password);
+	strengthBar.style.width = result.strength + '%';
+	strengthBar.style.background = result.color;
+	strengthText.textContent = `Password strength: ${result.label}`;
+	strengthText.style.color = result.color;
+}
+
 function setupPasswordToggles() {
 	const toggles = document.querySelectorAll('.password-toggle');
 	if (!toggles.length) return;
@@ -1805,6 +1859,34 @@ function setupPasswordToggles() {
 			toggle.setAttribute('aria-pressed', String(isHidden));
 		});
 	});
+}
+
+function setupPasswordStrength() {
+	const passwordInput = document.querySelector('#signup-form input[name="password"]');
+	if (!passwordInput) {
+		setTimeout(setupPasswordStrength, 100);
+		return;
+	}
+	
+	let isSetup = passwordInput.dataset.strengthSetup === 'true';
+	if (isSetup) return;
+	
+	passwordInput.addEventListener('input', (e) => {
+		updatePasswordStrength(e.target.value);
+	});
+	
+	passwordInput.addEventListener('keyup', (e) => {
+		updatePasswordStrength(e.target.value);
+	});
+	
+	passwordInput.addEventListener('paste', (e) => {
+		setTimeout(() => {
+			updatePasswordStrength(e.target.value);
+		}, 10);
+	});
+	
+	passwordInput.dataset.strengthSetup = 'true';
+	updatePasswordStrength(passwordInput.value);
 }
 
 function setupCompetitionFilters() {

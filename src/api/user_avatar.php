@@ -20,12 +20,6 @@ try {
 	$stmt->execute([':id' => $id]);
 	$avatar = $stmt->fetch(PDO::FETCH_ASSOC);
 	
-	if (!$avatar) {
-		http_response_code(404);
-		echo 'Not found';
-		exit;
-	}
-
 	if (!$avatar || $avatar['avatar_data'] === null) {
 		http_response_code(404);
 		echo 'Not found';
