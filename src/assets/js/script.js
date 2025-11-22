@@ -777,75 +777,82 @@ async function registerForCompetition(competitionId, buttonEl) {
 	}
 
 	const button = buttonEl || document.querySelector(`button[data-action="register"][data-id="${competitionId}"]`);
+	const modal = document.getElementById('registrationModal');
+	const form = document.getElementById('registrationForm');
+	const compIdInput = document.getElementById('regCompetitionId');
+	const closeBtn = document.getElementById('closeRegistrationModal');
 
-	if (modal && form && compIdInput) {
-		compIdInput.value = competitionId;
-		form.reset();
-		
-		const errorDiv = document.getElementById('registrationError');
+	if (!modal || !form || !compIdInput) {
+		notify('Form pendaftaran tidak tersedia. Silakan refresh halaman.', 'error');
+		return;
+	}
+
+	compIdInput.value = competitionId;
+	form.reset();
+
+	const errorDiv = document.getElementById('registrationError');
+	if (errorDiv) errorDiv.style.display = 'none';
+
+	modal.classList.add('active');
+
+	const teamNameInput = document.getElementById('regTeamName');
+	if (teamNameInput) setTimeout(() => teamNameInput.focus(), 100);
+
+	const closeModal = () => {
+		modal.classList.remove('active');
+		if (button) button.disabled = false;
+	};
+
+	if (closeBtn) {
+		closeBtn.onclick = closeModal;
+	}
+
+	modal.onclick = (event) => {
+		if (event.target === modal) {
+			closeModal();
+		}
+	};
+
+	form.onsubmit = async (e) => {
+		e.preventDefault();
+		const teamName = document.getElementById('regTeamName').value.trim();
+		const notes = document.getElementById('regNotes').value.trim();
+
 		if (errorDiv) errorDiv.style.display = 'none';
 
-		modal.classList.add('active');
-		
-		const teamNameInput = document.getElementById('regTeamName');
-		if (teamNameInput) setTimeout(() => teamNameInput.focus(), 100);
+		try {
+			if (button) button.disabled = true;
+			const submitBtn = form.querySelector('button[type="submit"]');
+			if (submitBtn) submitBtn.disabled = true;
 
-		const closeModal = () => {
-			modal.classList.remove('active');
+			const response = await apiRequest('register_competition.php', {
+				method: 'POST',
+				body: {
+					competition_id: competitionId,
+					team_name: teamName,
+					registration_notes: notes,
+				},
+			});
+
+			closeModal();
+			const successMessage = response.message || 'Successfully registered for competition';
+			notify(successMessage, 'success');
+			showCompetitionAlert(successMessage, 'success');
+			await Promise.allSettled([refreshCompetitions(), refreshMyCompetitions(), refreshRecentActivity()]);
+		} catch (err) {
+			if (errorDiv) {
+				errorDiv.textContent = err.message;
+				errorDiv.style.display = 'block';
+			} else {
+				notify(err.message, 'error');
+				showCompetitionAlert(err.message, 'error');
+			}
+		} finally {
 			if (button) button.disabled = false;
-		};
-
-		if (closeBtn) {
-			closeBtn.onclick = closeModal;
+			const submitBtn = form.querySelector('button[type="submit"]');
+			if (submitBtn) submitBtn.disabled = false;
 		}
-		
-		modal.onclick = (event) => {
-			if (event.target === modal) {
-				closeModal();
-			}
-		};
-
-		form.onsubmit = async (e) => {
-			e.preventDefault();
-			const teamName = document.getElementById('regTeamName').value.trim();
-			const notes = document.getElementById('regNotes').value.trim();
-			
-			if (errorDiv) errorDiv.style.display = 'none';
-
-			try {
-				if (button) button.disabled = true;
-				const submitBtn = form.querySelector('button[type="submit"]');
-				if (submitBtn) submitBtn.disabled = true;
-
-				const response = await apiRequest('register_competition.php', {
-					method: 'POST',
-					body: { 
-						competition_id: competitionId,
-						team_name: teamName,
-						registration_notes: notes
-					},
-				});
-				
-				closeModal();
-				const successMessage = response.message || 'Successfully registered for competition';
-				notify(successMessage, 'success');
-				showCompetitionAlert(successMessage, 'success');
-				await Promise.allSettled([refreshCompetitions(), refreshMyCompetitions(), refreshRecentActivity()]);
-			} catch (err) {
-				if (errorDiv) {
-					errorDiv.textContent = err.message;
-					errorDiv.style.display = 'block';
-				} else {
-					notify(err.message, 'error');
-					showCompetitionAlert(err.message, 'error');
-				}
-			} finally {
-				if (button) button.disabled = false;
-				const submitBtn = form.querySelector('button[type="submit"]');
-				if (submitBtn) submitBtn.disabled = false;
-			}
-		};
-	}
+	};
 }
 
 function showPage(pageId) {
