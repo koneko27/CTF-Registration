@@ -63,5 +63,5 @@ try {
     ]);
 } catch (Throwable $e) {
     error_log('my_competitions error: ' . $e->getMessage());
-    json_response(500, ['error' => 'Server error', 'details' => $e->getMessage()]);
+    json_response(500, ['error' => 'Server error']);
 }

@@ -5,6 +5,12 @@ require_once __DIR__ . '/utils.php';
 
 ensure_http_method('POST');
 
+$rateLimitKey = 'signup_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+if (!check_rate_limit($rateLimitKey, 3, 3600)) {
+	$remaining = get_rate_limit_remaining($rateLimitKey);
+	json_response(429, ['error' => 'Too many registration attempts. Please try again later.', 'retry_after' => 3600]);
+}
+
 $input = require_json_input();
 
 $fullName = sanitize_string($input['fullName'] ?? '');
@@ -17,11 +23,15 @@ if ($fullName === '' || $email === '' || $username === '' || $password === '' ||
 	json_response(400, ['error' => 'All fields are required']);
 }
 
+if (!validate_full_name($fullName)) {
+	json_response(400, ['error' => 'Full name must be 1-100 characters and cannot contain special characters']);
+}
+
 if (!validate_email($email)) {
 	json_response(400, ['error' => 'Invalid email format']);
 }
 
-if (!preg_match('/^[A-Za-z0-9_]{3,32}$/', $username)) {
+if (!validate_username($username)) {
 	json_response(400, ['error' => 'Username must be 3-32 characters and alphanumeric/underscore only']);
 }
 
@@ -29,8 +39,8 @@ if (strlen($password) < 12 || strlen($password) > 128) {
 	json_response(400, ['error' => 'Password must be between 12 and 128 characters']);
 }
 
-if (!preg_match('/[A-Z]/', $password) || !preg_match('/[a-z]/', $password) || !preg_match('/[0-9]/', $password)) {
-	json_response(400, ['error' => 'Password must include upper, lower, and numeric characters']);
+if (!preg_match('/[A-Z]/', $password) || !preg_match('/[a-z]/', $password) || !preg_match('/[0-9]/', $password) || !preg_match('/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~`]/', $password)) {
+	json_response(400, ['error' => 'Password must include upper, lower, numeric, and special characters']);
 }
 
 if ($password !== $confirmPassword) {

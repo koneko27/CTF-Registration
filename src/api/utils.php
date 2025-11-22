@@ -4,20 +4,31 @@ require_once __DIR__ . '/db.php';
 
 function json_response(int $statusCode, array $data): void {
 	http_response_code($statusCode);
-	header('Content-Type: application/json');
+	header('Content-Type: application/json; charset=UTF-8');
 	header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 	header('Pragma: no-cache');
 	header('X-Content-Type-Options: nosniff');
 	header('X-Frame-Options: DENY');
-	header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-	echo json_encode($data, JSON_UNESCAPED_SLASHES);
+	header('X-XSS-Protection: 1; mode=block');
+	header('Referrer-Policy: strict-origin-when-cross-origin');
+	header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' https://cdnjs.cloudflare.com; style-src \'self\' \'unsafe-inline\' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src \'self\' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src \'self\' data:; connect-src \'self\';');
+	$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] === '443');
+	if ($isSecure) {
+		header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+	}
+	echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 	exit;
 }
 
 function get_json_input(): array {
+	$maxSize = 1024 * 1024;
 	$raw = file_get_contents('php://input');
 	if ($raw === false || $raw === '') {
 		return [];
+	}
+	
+	if (strlen($raw) > $maxSize) {
+		throw new InvalidArgumentException('Request payload too large.');
 	}
 
 	$decoded = json_decode($raw, true);
@@ -37,7 +48,26 @@ function require_json_input(): array {
 }
 
 function sanitize_string(?string $value): string {
-	return trim($value ?? '');
+	if ($value === null) {
+		return '';
+	}
+	$value = trim($value);
+	$value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
+	return $value;
+}
+
+function validate_full_name(string $name): bool {
+	if (strlen($name) < 1 || strlen($name) > 100) {
+		return false;
+	}
+	if (preg_match('/[<>"\']/', $name)) {
+		return false;
+	}
+	return true;
+}
+
+function validate_username(string $username): bool {
+	return preg_match('/^[A-Za-z0-9_]{3,32}$/', $username) === 1;
 }
 
 function validate_email(string $email): bool {
@@ -197,11 +227,12 @@ function record_activity(int $userId, string $type, string $description, ?array 
 	try {
 		$pdo = get_pdo();
 		$stmt = $pdo->prepare('INSERT INTO user_activity (user_id, activity_type, description, metadata) VALUES (:user_id, :type, :description, :metadata)');
+		$sanitizedDescription = sanitize_string($description);
 		$stmt->execute([
 			':user_id' => $userId,
-			':type' => $type,
-			':description' => $description,
-			':metadata' => $metadata !== null ? json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
+			':type' => sanitize_string($type),
+			':description' => $sanitizedDescription,
+			':metadata' => $metadata !== null ? json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) : null,
 		]);
 	} catch (Throwable $e) {
 		error_log('record_activity failed: ' . $e->getMessage());
@@ -416,4 +447,34 @@ function compute_competition_status(string $startDate, string $endDate, string $
 	}
 
 	return 'upcoming';
+}
+
+function check_rate_limit(string $key, int $maxAttempts = 5, int $windowSeconds = 300): bool {
+	start_secure_session();
+	$rateLimitKey = 'rate_limit_' . $key;
+	$attempts = $_SESSION[$rateLimitKey] ?? [];
+	$now = time();
+	$attempts = array_filter($attempts, function($timestamp) use ($now, $windowSeconds) {
+		return ($now - $timestamp) < $windowSeconds;
+	});
+	
+	if (count($attempts) >= $maxAttempts) {
+		return false;
+	}
+	
+	$attempts[] = $now;
+	$_SESSION[$rateLimitKey] = $attempts;
+	return true;
+}
+
+function get_rate_limit_remaining(string $key): int {
+	start_secure_session();
+	$rateLimitKey = 'rate_limit_' . $key;
+	$attempts = $_SESSION[$rateLimitKey] ?? [];
+	$now = time();
+	$windowSeconds = 300;
+	$validAttempts = array_filter($attempts, function($timestamp) use ($now, $windowSeconds) {
+		return ($now - $timestamp) < $windowSeconds;
+	});
+	return max(0, 5 - count($validAttempts));
 }

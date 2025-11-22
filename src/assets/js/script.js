@@ -290,7 +290,7 @@ function renderRecentActivity() {
 
 	container.innerHTML = state.recentActivity
 		.map((activity) => {
-			const icon = getActivityIcon(activity.activity_type);
+			const icon = escapeHtml(getActivityIcon(activity.activity_type));
 			const description = escapeHtml(activity.description || '');
 			const relativeTime = formatRelativeTime(activity.created_at, activity.created_at_epoch_ms);
 			return `

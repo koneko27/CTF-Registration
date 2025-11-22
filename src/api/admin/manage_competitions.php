@@ -114,8 +114,26 @@ try {
             if ($name === '') {
                 json_response(400, ['error' => "Field 'name' is required"]);
             }
+            if (strlen($name) > 255) {
+                json_response(400, ['error' => "Competition name must be 255 characters or less"]);
+            }
             if ($category === '') {
                 json_response(400, ['error' => "Field 'category' is required"]);
+            }
+            if (strlen($category) > 100) {
+                json_response(400, ['error' => "Category must be 100 characters or less"]);
+            }
+            if (strlen($description) > 10000) {
+                json_response(400, ['error' => "Description must be 10000 characters or less"]);
+            }
+            if (strlen($rules) > 10000) {
+                json_response(400, ['error' => "Rules must be 10000 characters or less"]);
+            }
+            if (strlen($prizePool) > 255) {
+                json_response(400, ['error' => "Prize pool must be 255 characters or less"]);
+            }
+            if (strlen($contact) > 255) {
+                json_response(400, ['error' => "Contact person must be 255 characters or less"]);
             }
 
             $startDate = normalize_datetime($data['start_date'] ?? null, 'start_date', true);
@@ -245,12 +263,18 @@ try {
                 if ($name === '') {
                     json_response(400, ['error' => "Field 'name' cannot be empty"]);
                 }
+                if (strlen($name) > 255) {
+                    json_response(400, ['error' => "Competition name must be 255 characters or less"]);
+                }
                 $fields[] = 'name = :name';
                 $params[':name'] = $name;
             }
 
             if (array_key_exists('description', $data)) {
                 $description = sanitize_string($data['description']);
+                if (strlen($description) > 10000) {
+                    json_response(400, ['error' => "Description must be 10000 characters or less"]);
+                }
                 $fields[] = 'description = :description';
                 $params[':description'] = $description !== '' ? $description : null;
             }
@@ -279,6 +303,9 @@ try {
 
             if (array_key_exists('prize_pool', $data)) {
                 $prize = sanitize_string($data['prize_pool']);
+                if (strlen($prize) > 255) {
+                    json_response(400, ['error' => "Prize pool must be 255 characters or less"]);
+                }
                 $params[':prize_pool'] = $prize !== '' ? $prize : null;
                 $fields[] = 'prize_pool = :prize_pool';
             }
@@ -288,18 +315,27 @@ try {
                 if ($category === '') {
                     json_response(400, ['error' => "Field 'category' cannot be empty"]);
                 }
+                if (strlen($category) > 100) {
+                    json_response(400, ['error' => "Category must be 100 characters or less"]);
+                }
                 $params[':category'] = $category;
                 $fields[] = 'category = :category';
             }
 
             if (array_key_exists('rules', $data)) {
                 $rules = sanitize_string($data['rules']);
+                if (strlen($rules) > 10000) {
+                    json_response(400, ['error' => "Rules must be 10000 characters or less"]);
+                }
                 $params[':rules'] = $rules !== '' ? $rules : null;
                 $fields[] = 'rules = :rules';
             }
 
             if (array_key_exists('contact_person', $data)) {
                 $contact = sanitize_string($data['contact_person']);
+                if (strlen($contact) > 255) {
+                    json_response(400, ['error' => "Contact person must be 255 characters or less"]);
+                }
                 $params[':contact_person'] = $contact !== '' ? $contact : null;
                 $fields[] = 'contact_person = :contact_person';
             }
@@ -370,7 +406,20 @@ try {
                 json_response(400, ['error' => 'No fields to update']);
             }
 
-            $sql = 'UPDATE competitions SET ' . implode(', ', $fields) . ' WHERE id = :id RETURNING id, name, description, start_date, end_date, registration_deadline, max_participants, difficulty_level, prize_pool, category, rules, contact_person, banner_updated_at, created_at, (CASE WHEN banner_data IS NOT NULL THEN 1 ELSE 0 END) AS has_banner';
+            $allowedFields = ['name', 'description', 'start_date', 'end_date', 'registration_deadline', 'max_participants', 'difficulty_level', 'prize_pool', 'category', 'rules', 'contact_person', 'banner_data', 'banner_mime', 'banner_updated_at'];
+            $sanitizedFields = [];
+            foreach ($fields as $field) {
+                $fieldName = explode(' =', $field)[0] ?? '';
+                if (in_array(trim($fieldName), $allowedFields, true)) {
+                    $sanitizedFields[] = $field;
+                }
+            }
+            
+            if (empty($sanitizedFields)) {
+                json_response(400, ['error' => 'No valid fields to update']);
+            }
+
+            $sql = 'UPDATE competitions SET ' . implode(', ', $sanitizedFields) . ' WHERE id = :id RETURNING id, name, description, start_date, end_date, registration_deadline, max_participants, difficulty_level, prize_pool, category, rules, contact_person, banner_updated_at, created_at, (CASE WHEN banner_data IS NOT NULL THEN 1 ELSE 0 END) AS has_banner';
             $stmt = $pdo->prepare($sql);
             foreach ($params as $key => $value) {
                 if ($key === ':banner_data' && isset($params[':banner_data'])) {

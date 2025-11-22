@@ -19,6 +19,12 @@ try {
 	$stmt = $pdo->prepare('SELECT avatar_data, avatar_mime FROM users WHERE id = :id LIMIT 1');
 	$stmt->execute([':id' => $id]);
 	$avatar = $stmt->fetch(PDO::FETCH_ASSOC);
+	
+	if (!$avatar) {
+		http_response_code(404);
+		echo 'Not found';
+		exit;
+	}
 
 	if (!$avatar || $avatar['avatar_data'] === null) {
 		http_response_code(404);
@@ -27,9 +33,18 @@ try {
 	}
 
 	$mime = $avatar['avatar_mime'] ?: 'application/octet-stream';
+	$allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+	if (!in_array($mime, $allowedMimes, true)) {
+		http_response_code(400);
+		echo 'Invalid image type';
+		exit;
+	}
+	
 	header('Content-Type: ' . $mime);
 	header('Cache-Control: public, max-age=3600');
-
+	header('X-Content-Type-Options: nosniff');
+	header('Content-Security-Policy: default-src \'self\';');
+	
 	$data = $avatar['avatar_data'];
 	if (is_resource($data)) {
 		fpassthru($data);

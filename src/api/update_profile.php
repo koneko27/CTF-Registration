@@ -16,8 +16,8 @@ try {
 	$fullNameValue = $input['fullName'] ?? $input['full_name'] ?? null;
 	if ($fullNameValue !== null) {
 		$fullName = sanitize_string($fullNameValue);
-		if ($fullName === '' || strlen($fullName) > 100) {
-			json_response(400, ['error' => 'Full name must be 1-100 characters']);
+		if (!validate_full_name($fullName)) {
+			json_response(400, ['error' => 'Full name must be 1-100 characters and cannot contain special characters']);
 		}
 		$updates[] = 'full_name = :full_name';
 		$params['full_name'] = $fullName;
@@ -70,13 +70,13 @@ try {
 			json_response(400, ['error' => 'New password and confirmation do not match']);
 		}
 
-		if (strlen($newPassword) < 12 || strlen($newPassword) > 128) {
-			json_response(400, ['error' => 'New password must be between 12 and 128 characters']);
-		}
+	if (strlen($newPassword) < 12 || strlen($newPassword) > 128) {
+		json_response(400, ['error' => 'New password must be between 12 and 128 characters']);
+	}
 
-		if (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[a-z]/', $newPassword) || !preg_match('/[0-9]/', $newPassword)) {
-			json_response(400, ['error' => 'New password must include upper, lower, and numeric characters']);
-		}
+	if (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[a-z]/', $newPassword) || !preg_match('/[0-9]/', $newPassword) || !preg_match('/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~`]/', $newPassword)) {
+		json_response(400, ['error' => 'New password must include upper, lower, numeric, and special characters']);
+	}
 
 		$stmt = $pdo->prepare('SELECT password_hash FROM users WHERE id = :id');
 		$stmt->execute([':id' => $user['id']]);
@@ -103,7 +103,20 @@ try {
 		}
 	}
 
-	$sql = 'UPDATE users SET ' . implode(', ', $updates) . ', updated_at = NOW() WHERE id = :id';
+	$allowedFields = ['full_name', 'email', 'location', 'bio', 'password_hash'];
+	$sanitizedUpdates = [];
+	foreach ($updates as $update) {
+		$fieldName = explode(' =', $update)[0] ?? '';
+		if (in_array(trim($fieldName), $allowedFields, true)) {
+			$sanitizedUpdates[] = $update;
+		}
+	}
+	
+	if (empty($sanitizedUpdates)) {
+		json_response(400, ['error' => 'No valid fields to update']);
+	}
+
+	$sql = 'UPDATE users SET ' . implode(', ', $sanitizedUpdates) . ', updated_at = NOW() WHERE id = :id';
 	$stmt = $pdo->prepare($sql);
 	$stmt->execute($params);
 

@@ -26,9 +26,18 @@ try {
 	}
 
 	$mime = $banner['banner_mime'] ?: 'application/octet-stream';
+	$allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+	if (!in_array($mime, $allowedMimes, true)) {
+		http_response_code(400);
+		echo 'Invalid image type';
+		exit;
+	}
+	
 	header('Content-Type: ' . $mime);
 	header('Cache-Control: public, max-age=3600');
-
+	header('X-Content-Type-Options: nosniff');
+	header('Content-Security-Policy: default-src \'self\';');
+	
 	$data = $banner['banner_data'];
 	if (is_resource($data)) {
 		fpassthru($data);
