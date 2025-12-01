@@ -5,7 +5,7 @@ services:
     container_name: regist_ctf
     ports:
       - "9000:80"
-    environment:
-      - DATABASE_URL=postgresql://neondb_owner:npg_qkfmW5NpYP7X@ep-tiny-voice-a1a49fzy-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&options=endpoint%3Dep-tiny-voice-a1a49fzy
+    env_file:
+      - .env
     volumes:
       - ./src:/var/www/html
