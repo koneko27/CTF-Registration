@@ -1,3 +1,4 @@
+
 .nav-link[data-auth="protected"] { display: none; }
 
 .user-profile { position: relative; cursor: pointer; }

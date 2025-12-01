@@ -23,38 +23,63 @@ const THEME_STORAGE_KEY = 'koneko-theme';
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
-	initThemeToggle();
-	setupPasswordToggles();
-	setupPasswordStrength();
-	setupCompetitionFilters();
-	setupNavigation();
-	wireAuthForms();
-	wireProfileEditor();
-	wireSignOut();
-	setupCompetitionInteractions();
-	setupAdminUI();
-	initMatrixRain();
+	try {
+		initThemeToggle();
+		setupPasswordToggles();
+		setupPasswordStrength();
+		setupCompetitionFilters();
+		setupNavigation();
+		wireAuthForms();
+		wireProfileEditor();
+		wireSignOut();
+		setupCompetitionInteractions();
+		setupAdminUI();
+		initMatrixRain();
 
-	await refreshSession();
-	applyUserToUI();
+		// Race condition: Session refresh vs Timeout
+		// Ensures loader doesn't stick for more than 1.5s even if network hangs
+		// But waits at least 200ms for smooth animation
+		const minLoadTime = new Promise(resolve => setTimeout(resolve, 200));
+		const sessionTask = refreshSession();
+		const maxWaitTime = new Promise(resolve => setTimeout(resolve, 1500));
 
-	const initialPage = window.location.hash.replace('#', '') || 'home';
-	if (initialPage.startsWith('reset-password')) {
-		// handleResetPasswordRoute(); // Deleted
-		showPage('not-found');
-	} else {
-		showPage(initialPage);
-	}
-
-	window.addEventListener('hashchange', () => {
-		const page = window.location.hash.replace('#', '') || 'home';
-		if (page.startsWith('reset-password')) {
-			// handleResetPasswordRoute(); // Deleted
+		await Promise.all([
+			minLoadTime,
+			Promise.race([sessionTask, maxWaitTime])
+		]);
+		
+		applyUserToUI();
+	} catch (err) {
+		console.error('Initialization error:', err);
+	} finally {
+		hideLoader();
+		
+		const initialPage = window.location.hash.replace('#', '') || 'home';
+		if (initialPage.startsWith('reset-password')) {
 			showPage('not-found');
 		} else {
-			showPage(page);
+			showPage(initialPage);
 		}
-	});
+
+		window.addEventListener('hashchange', () => {
+			const page = window.location.hash.replace('#', '') || 'home';
+			if (page.startsWith('reset-password')) {
+				showPage('not-found');
+			} else {
+				showPage(page);
+			}
+		});
+	}
+}
+
+function hideLoader() {
+	const loader = document.getElementById('page-loader');
+	if (loader) {
+		loader.classList.add('hidden');
+		setTimeout(() => {
+			loader.remove();
+		}, 200); // Match CSS transition duration
+	}
 }
 
 function notify(message, type = 'info') {
@@ -1852,45 +1877,54 @@ async function ensureCsrfToken() {
 }
 
 async function apiRequest(path, options = {}) {
-	const opts = { credentials: 'include', requireCsrf: true, ...options };
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+	const opts = { credentials: 'include', requireCsrf: true, signal: controller.signal, ...options };
 	const method = (opts.method || 'GET').toUpperCase();
 	const safeMethod = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
 
-	if (opts.requireCsrf && !safeMethod) {
-		const token = await ensureCsrfToken();
-		if (!token) {
-			throw new Error('Unable to verify request. Please refresh and try again.');
-		}
-	}
-
-	const headers = opts.headers || {};
-	if (opts.body && opts.json !== false) {
-		headers['Content-Type'] = 'application/json';
-		opts.body = JSON.stringify(opts.body);
-	} else if (opts.json === false) {
-		delete opts.json;
-	}
-
-	if (opts.requireCsrf && state.csrfToken) {
-		headers['X-CSRF-Token'] = state.csrfToken;
-	}
-	
-	opts.headers = headers;
-	delete opts.requireCsrf;
-
-	const response = await fetch(`api/${path}`, opts);
-	let data = {};
 	try {
-		data = await response.json();
+		if (opts.requireCsrf && !safeMethod) {
+			const token = await ensureCsrfToken();
+			if (!token) {
+				throw new Error('Unable to verify request. Please refresh and try again.');
+			}
+		}
+
+		const headers = opts.headers || {};
+		if (opts.body && opts.json !== false) {
+			headers['Content-Type'] = 'application/json';
+			opts.body = JSON.stringify(opts.body);
+		} else if (opts.json === false) {
+			delete opts.json;
+		}
+
+		if (opts.requireCsrf && state.csrfToken) {
+			headers['X-CSRF-Token'] = state.csrfToken;
+		}
+		
+		opts.headers = headers;
+		delete opts.requireCsrf;
+
+		const response = await fetch(`api/${path}`, opts);
+		clearTimeout(timeoutId);
+		
+		let data = {};
+		try {
+			data = await response.json();
+		} catch (err) {
+		}
+
+		if (!response.ok) {
+			const message = data?.error || `Request failed (${response.status})`;
+			throw new Error(message);
+		}
+
+		return data;
 	} catch (err) {
+		clearTimeout(timeoutId);
+		throw err;
 	}
-
-	if (!response.ok) {
-		const message = data?.error || `Request failed (${response.status})`;
-		throw new Error(message);
-	}
-
-	return data;
 }
 
 function wireSignOutMenu() {
