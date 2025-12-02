@@ -21,6 +21,26 @@ if (strlen($identifier) > 255) {
 	json_response(400, ['error' => 'Identifier too long']);
 }
 
+// Check account lockout
+try {
+	$lockStmt = $pdo->prepare('SELECT locked_until FROM users WHERE email = :identifier OR username = :identifier LIMIT 1');
+	$lockStmt->execute([':identifier' => $identifier]);
+	$lockData = $lockStmt->fetch(PDO::FETCH_ASSOC);
+	
+	if ($lockData && $lockData['locked_until']) {
+		$lockedUntil = strtotime($lockData['locked_until']);
+		if ($lockedUntil > time()) {
+			$minutesLeft = ceil(($lockedUntil - time()) / 60);
+			json_response(429, [
+				'error' => 'Account is temporarily locked due to too many failed login attempts. Please try again in ' . $minutesLeft . ' minutes.',
+				'retry_after' => $lockedUntil - time()
+			]);
+		}
+	}
+} catch (Throwable $e) {
+	// Ignore if table doesn't have locked_until column yet
+}
+
 // Rate limit per IP
 $rateLimitKeyIP = 'signin_ip_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
 if (!check_rate_limit($rateLimitKeyIP, 10, 300)) {
@@ -40,11 +60,62 @@ try {
 	$stmt->execute([':identifier' => $identifier]);
 	$user = $stmt->fetch();
 
-	if (!$user || !password_verify($password, $user['password_hash'])) {
-		error_log('Failed login attempt for identifier: ' . $identifier . ' from IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+	// Always run password_verify to prevent timing attacks
+	// Use dummy hash if user doesn't exist to maintain consistent timing
+	$storedHash = $user['password_hash'] ?? password_hash('dummy_password_for_timing', PASSWORD_DEFAULT);
+	
+	$passwordValid = password_verify($password, $storedHash);
+	
+	// Record failed login attempt (always execute to normalize timing)
+	if ($user && (!$passwordValid || !$user)) {
+		try {
+			error_log('Failed login attempt for identifier: ' . $identifier . ' from IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+			
+			// Count failed attempts in last 15 minutes
+			$countStmt = $pdo->prepare('SELECT COUNT(*) FROM failed_login_attempts WHERE identifier = :identifier AND attempt_at > NOW() - INTERVAL \'15 minutes\'');
+			$countStmt->execute([':identifier' => strtolower($identifier)]);
+			$failedCount = (int)$countStmt->fetchColumn();
+			
+			// Record this attempt
+			$insertStmt = $pdo->prepare('INSERT INTO failed_login_attempts (identifier, ip_address, user_agent) VALUES (:identifier, :ip, :ua)');
+			$insertStmt->execute([
+				':identifier' => strtolower($identifier),
+				':ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+				':ua' => $_SERVER['HTTP_USER_AGENT'] ?? null
+			]);
+			
+			// Lock account after 10 failed attempts
+			if ($failedCount >= 9) { // 9 previous + 1 current = 10
+				$lockUntil = date('Y-m-d H:i:s', time() + 3600); // 1 hour
+				$lockStmt = $pdo->prepare('UPDATE users SET locked_until = :locked_until WHERE id = :user_id');
+				$lockStmt->execute([':locked_until' => $lockUntil, ':user_id' => $user['id']]);
+				
+				error_log('Account locked for user ID ' . $user['id'] . ' due to failed login attempts');
+			}
+		} catch (Throwable $e) {
+			// Ignore if failed_login_attempts table doesn't exist yet
+		}
+	}
+	
+	// Add artificial delay to normalize timing and prevent enumeration attacks
+	usleep(random_int(100000, 300000)); // 100-300ms random delay
+	
+	if (!$user || !$passwordValid) {
 		json_response(401, ['error' => 'Invalid credentials']);
 	}
 
+	// Clear failed login attempts on successful login
+	try {
+		$clearStmt = $pdo->prepare('DELETE FROM failed_login_attempts WHERE identifier = :identifier');
+		$clearStmt->execute([':identifier' => strtolower($identifier)]);
+		
+		// Clear account lock if any
+		$unlockStmt = $pdo->prepare('UPDATE users SET locked_until = NULL WHERE id = :user_id AND locked_until IS NOT NULL');
+		$unlockStmt->execute([':user_id' => $user['id']]);
+	} catch (Throwable $e) {
+		// Ignore if tables don't exist yet
+	}
+	
 	loginUser((int) $user['id'], (string) $user['role'], (int) ($user['token_version'] ?? 1));
 	// Rotate CSRF token for the new authenticated session
 	$_SESSION['csrf_token'] = bin2hex(random_bytes(32));

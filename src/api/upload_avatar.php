@@ -11,6 +11,13 @@ if (!check_rate_limit($rateLimitKey, 5, 600)) { // 5 uploads per 10 minutes
 	json_response(429, ['error' => 'Too many upload attempts. Please try again later.']);
 }
 
+// Validate Content-Length before processing upload
+$contentLength = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+$maxSize = 2 * 1024 * 1024; // 2MB
+if ($contentLength > $maxSize) {
+	json_response(400, ['error' => 'File too large. Maximum size is 2 MB']);
+}
+
 if (!isset($_FILES['avatar']) || !is_array($_FILES['avatar'])) {
 	json_response(400, ['error' => 'Avatar upload is required']);
 }
@@ -20,13 +27,18 @@ if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
 	json_response(400, ['error' => 'Avatar upload failed']);
 }
 
+// Check for double extension and dangerous extensions (e.g., file.jpg.php)
+$originalName = $file['name'] ?? '';
+if (preg_match('/\.(php|phtml|php3|php4|php5|php7|phps|pht|phar|inc|hta|htaccess|sh|exe|com|bat)($|\.)/i', $originalName)) {
+	json_response(400, ['error' => 'Invalid file extension detected']);
+}
+
 try {
 	$allowedTypes = [
 		'image/jpeg' => 'jpg',
 		'image/png' => 'png',
 		'image/webp' => 'webp',
 	];
-	$maxSize = 2 * 1024 * 1024;
 	$maxDimension = 2000; 
 
 	if (($file['size'] ?? 0) <= 0 || $file['size'] > $maxSize) {
@@ -41,6 +53,23 @@ try {
 
 	if (!isset($allowedTypes[$detectedType])) {
 		json_response(400, ['error' => 'Unsupported image type']);
+	}
+
+	// Read file for magic bytes validation
+	$fileHandle = fopen($file['tmp_name'], 'rb');
+	if (!$fileHandle) {
+		json_response(500, ['error' => 'Failed to read uploaded file']);
+	}
+	$magicBytes = fread($fileHandle, 12);
+	fclose($fileHandle);
+
+	// Validate magic bytes for common image formats
+	$validJpeg = (substr($magicBytes, 0, 3) === "\xFF\xD8\xFF");
+	$validPng = (substr($magicBytes, 0, 8) === "\x89PNG\r\n\x1a\n");
+	$validWebp = (substr($magicBytes, 0, 4) === "RIFF" && substr($magicBytes, 8, 4) === "WEBP");
+
+	if (!($validJpeg || $validPng || $validWebp)) {
+		json_response(400, ['error' => 'Invalid image file. File signature does not match image format.']);
 	}
 
 	$imgInfo = @getimagesize($file['tmp_name']);
@@ -66,6 +95,12 @@ try {
 
 	$avatarBinary = $processed['data'];
 	$detectedType = $processed['mime'];
+
+	// Verify processed image is still valid (defense-in-depth)
+	$verifyInfo = @getimagesizefromstring($avatarBinary);
+	if ($verifyInfo === false) {
+		json_response(400, ['error' => 'Image processing failed - file may be corrupted']);
+	}
 
 	$pdo = get_pdo();
 	$stmt = $pdo->prepare('UPDATE users SET avatar_data = :data, avatar_mime = :mime, avatar_updated_at = NOW(), updated_at = NOW() WHERE id = :id');

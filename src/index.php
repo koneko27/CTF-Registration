@@ -614,9 +614,9 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                                     <label class="checkbox">
                                         <input type="checkbox" name="rememberMe">
                                         <span class="checkmark"></span>
-                                        Remember me
+                                        Remember me for 30 days
                                     </label>
-                                    <a href="#not-found" class="forgot-password" data-action="navigate" data-page="not-found">Forgot password?</a>
+                                    <a href="#forgot-password" class="forgot-password">Forgot password?</a>
                                 </div>
                                 <button type="submit" class="btn btn-primary btn-full">
                                     <i class="fas fa-sign-in-alt"></i>
@@ -731,6 +731,136 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                             
                             <div class="auth-footer">
                                 <p>Already have an account? <a href="#signin" data-action="navigate" data-page="signin">Sign in here</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+
+        <div id="forgot-password" class="page">
+            <section class="auth-section">
+                <div class="container">
+                    <div class="auth-content">
+                        <div class="auth-mascot">
+                            <div class="cat-mascot">
+                                <div class="cat-body">
+                                    <div class="cat-face">
+                                        <div class="cat-eyes">
+                                            <div class="eye left-eye"></div>
+                                            <div class="eye right-eye"></div>
+                                        </div>
+                                        <div class="cat-nose"></div>
+                                        <div class="cat-mouth">
+                                            <div class="mouth-left"></div>
+                                            <div class="mouth-right"></div>
+                                        </div>
+                                    </div>
+                                    <div class="cat-ears">
+                                        <div class="ear ear-left"></div>
+                                        <div class="ear ear-right"></div>
+                                    </div>
+                                    <div class="cat-hoodie"></div>
+                                </div>
+                            </div>
+                            <div class="speech-bubble">
+                                <span class="speech-text">Need help with your password?</span>
+                            </div>
+                        </div>
+                        
+                        <div class="auth-form">
+                            <h1>Forgot Password</h1>
+                            <p>Enter your email address and we'll send you a link to reset your password.</p>
+                            
+                            <form id="forgot-password-form">
+                                <div class="form-group">
+                                    <label>Email Address</label>
+                                    <input type="email" name="email" placeholder="Enter your email address" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Send Reset Link
+                                </button>
+                            </form>
+                            
+                            <div class="auth-footer">
+                                <p>Remember your password? <a href="#signin" data-action="navigate" data-page="signin">Sign in here</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="reset-password" class="page">
+            <section class="auth-section">
+                <div class="container">
+                    <div class="auth-content">
+                        <div class="auth-mascot">
+                            <div class="cat-mascot">
+                                <div class="cat-body">
+                                    <div class="cat-face">
+                                        <div class="cat-eyes">
+                                            <div class="eye left-eye"></div>
+                                            <div class="eye right-eye"></div>
+                                        </div>
+                                        <div class="cat-nose"></div>
+                                        <div class="cat-mouth">
+                                            <div class="mouth-left"></div>
+                                            <div class="mouth-right"></div>
+                                        </div>
+                                    </div>
+                                    <div class="cat-ears">
+                                        <div class="ear ear-left"></div>
+                                        <div class="ear ear-right"></div>
+                                    </div>
+                                    <div class="cat-hoodie"></div>
+                                </div>
+                            </div>
+                            <div class="speech-bubble">
+                                <span class="speech-text">Create a new password!</span>
+                            </div>
+                        </div>
+                        
+                        <div class="auth-form">
+                            <h1>Reset Password</h1>
+                            <p>Enter your new password below.</p>
+                            
+                            <form id="reset-password-form">
+                                <input type="hidden" name="token" id="reset-token">
+                                <div class="form-group">
+                                    <label>New Password</label>
+                                    <div class="password-input">
+                                        <input type="password" name="newPassword" placeholder="Enter new password" required>
+                                        <button class="password-toggle" type="button">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="password-strength">
+                                        <div class="strength-bar">
+                                            <div class="strength-fill"></div>
+                                        </div>
+                                        <span class="strength-text">Password strength: Weak</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Confirm New Password</label>
+                                    <div class="password-input">
+                                        <input type="password" name="confirmPassword" placeholder="Confirm new password" required>
+                                        <button class="password-toggle" type="button">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full">
+                                    <i class="fas fa-key"></i>
+                                    Reset Password
+                                </button>
+                            </form>
+                            
+                            <div class="auth-footer">
+                                <p>Back to <a href="#signin" data-action="navigate" data-page="signin">Sign in</a></p>
                             </div>
                         </div>
                     </div>

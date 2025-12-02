@@ -98,14 +98,6 @@ try {
 		json_response(400, ['error' => 'No valid fields to update']);
 	}
 
-	if (isset($params['email'])) {
-		$check = $pdo->prepare('SELECT 1 FROM users WHERE email = :email AND id <> :id');
-		$check->execute([':email' => $params['email'], ':id' => $user['id']]);
-		if ($check->fetch()) {
-			json_response(409, ['error' => 'Email already in use']);
-		}
-	}
-
 	$allowedFields = ['full_name', 'email', 'location', 'bio', 'password_hash', 'token_version'];
 	$sanitizedUpdates = [];
 	foreach ($updates as $update) {
@@ -119,12 +111,25 @@ try {
 		json_response(400, ['error' => 'No valid fields to update']);
 	}
 
-	// Use transaction for password changes to ensure session invalidation happens atomically
-	if ($passwordChanged) {
+	// Use transaction for atomic email uniqueness check and password changes
+	$needsTransaction = $passwordChanged || isset($params['email']);
+	if ($needsTransaction) {
 		$pdo->beginTransaction();
 	}
 
 	try {
+		// Atomic email uniqueness check with row locking
+		if (isset($params['email'])) {
+			$check = $pdo->prepare('SELECT 1 FROM users WHERE email = :email AND id <> :id FOR UPDATE');
+			$check->execute([':email' => $params['email'], ':id' => $user['id']]);
+			if ($check->fetch()) {
+				if ($needsTransaction) {
+					$pdo->rollBack();
+				}
+				json_response(409, ['error' => 'Email already in use']);
+			}
+		}
+
 		$sql = 'UPDATE users SET ' . implode(', ', $sanitizedUpdates) . ', updated_at = NOW() WHERE id = :id RETURNING token_version';
 		$stmt = $pdo->prepare($sql);
 		$stmt->execute($params);
@@ -135,16 +140,18 @@ try {
 			$deleteSessionsStmt = $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :user_id');
 			$deleteSessionsStmt->execute([':user_id' => $user['id']]);
 			
-			// Commit the transaction
-			$pdo->commit();
-			
 			// Update current session token version if password changed, so this user isn't logged out
 			if ($newTokenVersion) {
 				$_SESSION['token_version'] = (int)$newTokenVersion;
 			}
 		}
+
+		// Commit the transaction if one was started
+		if ($needsTransaction) {
+			$pdo->commit();
+		}
 	} catch (Throwable $e) {
-		if ($passwordChanged && $pdo->inTransaction()) {
+		if ($needsTransaction && $pdo->inTransaction()) {
 			$pdo->rollBack();
 		}
 		throw $e;

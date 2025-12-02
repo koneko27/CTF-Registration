@@ -7,18 +7,18 @@ if ($databaseUrl === false || $databaseUrl === '') {
 
 define('DATABASE_URL', $databaseUrl);
 
-// Prevent Host Header Injection by defining a fixed APP_URL
-// In production, set this environment variable to your actual domain (e.g., https://ctf.koneko.local)
+// Prevent Host Header Injection by requiring APP_URL environment variable
+// SECURITY: Never use HTTP_HOST header as it's user-controlled
 $appUrl = getenv('APP_URL');
 if (!$appUrl) {
-    // Fallback with validation
-    $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    // Validate host contains only allowed characters to prevent basic injection/XSS
-    if (!preg_match('/^[a-zA-Z0-9.:-]+$/', $host)) {
-        $host = 'localhost';
+    // Development-only fallback - NEVER use HTTP_HOST in production
+    // This fallback should only be used in local development
+    if (getenv('ENVIRONMENT') === 'production') {
+        throw new RuntimeException('APP_URL environment variable is required in production.');
     }
-    $appUrl = $proto . '://' . $host;
+    // Safe localhost-only fallback for development
+    $appUrl = 'http://localhost:9000';
+    error_log('WARNING: Using localhost fallback for APP_URL. Set APP_URL environment variable.');
 }
 define('APP_URL', rtrim($appUrl, '/'));
 

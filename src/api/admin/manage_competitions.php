@@ -149,6 +149,15 @@ try {
                 json_response(400, ['error' => 'End date must be after start date']);
             }
 
+            // Validate date ranges (must be within reasonable future timeframe)
+            $maxFutureYears = 5;
+            $minDate = new DateTime();
+            $maxDate = (new DateTime())->modify("+$maxFutureYears years");
+            $startDateObj = new DateTime($startDate);
+            if ($startDateObj < $minDate || $startDateObj > $maxDate) {
+                json_response(400, ['error' => 'Start date must be between now and 5 years in the future']);
+            }
+
             $maxParticipants = $data['max_participants'] ?? null;
             if ($maxParticipants !== null && $maxParticipants !== '') {
                 if (!ctype_digit((string) $maxParticipants) || (int) $maxParticipants < 1) {
@@ -179,6 +188,17 @@ try {
             if (strlen($bannerBinary) > 5 * 1024 * 1024) {
                 json_response(400, ['error' => 'Banner image must be smaller than 5MB']);
             }
+
+            // Validate magic bytes for image formats
+            $magicBytes = substr($bannerBinary, 0, 12);
+            $validJpeg = (substr($magicBytes, 0, 3) === "\xFF\xD8\xFF");
+            $validPng = (substr($magicBytes, 0, 8) === "\x89PNG\r\n\x1a\n");
+            $validWebp = (substr($magicBytes, 0, 4) === "RIFF" && substr($magicBytes, 8, 4) === "WEBP");
+
+            if (!($validJpeg || $validPng || $validWebp)) {
+                json_response(400, ['error' => 'Invalid banner image. File signature does not match image format.']);
+            }
+
             $imageInfo = @getimagesizefromstring($bannerBinary);
             if ($imageInfo === false) {
                 json_response(400, ['error' => 'Invalid banner image']);
@@ -381,6 +401,17 @@ try {
                 if (strlen($bannerBinary) > 5 * 1024 * 1024) {
                     json_response(400, ['error' => 'Banner image must be smaller than 5MB']);
                 }
+
+                // Validate magic bytes for image formats
+                $magicBytes = substr($bannerBinary, 0, 12);
+                $validJpeg = (substr($magicBytes, 0, 3) === "\xFF\xD8\xFF");
+                $validPng = (substr($magicBytes, 0, 8) === "\x89PNG\r\n\x1a\n");
+                $validWebp = (substr($magicBytes, 0, 4) === "RIFF" && substr($magicBytes, 8, 4) === "WEBP");
+
+                if (!($validJpeg || $validPng || $validWebp)) {
+                    json_response(400, ['error' => 'Invalid banner image. File signature does not match image format.']);
+                }
+
                 $imageInfo = @getimagesizefromstring($bannerBinary);
                 if ($imageInfo === false) {
                     json_response(400, ['error' => 'Invalid banner image']);
@@ -394,7 +425,7 @@ try {
                     $bannerMime = 'image/jpeg';
                 }
                 try {
-                    $processed = resize_image_binary($bannerBinary, $bannerMime, 30);
+                    $processed = resize_image_binary($bannerBinary, $bannerMime, 1200);
                 } catch (RuntimeException $e) {
                     json_response(400, ['error' => $e->getMessage()]);
                 }

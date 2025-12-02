@@ -11,6 +11,10 @@ function json_response(int $statusCode, array $data): void {
 	header('X-Frame-Options: DENY');
 	header('X-XSS-Protection: 1; mode=block');
 	header('Referrer-Policy: strict-origin-when-cross-origin');
+	header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+	header('Cross-Origin-Embedder-Policy: require-corp');
+	header('Cross-Origin-Opener-Policy: same-origin');
+	header('Cross-Origin-Resource-Policy: same-origin');
 	$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] === '443');
 	if ($isSecure) {
 		header('Strict-Transport-Security: max-age=31536000; includeSubDomains');

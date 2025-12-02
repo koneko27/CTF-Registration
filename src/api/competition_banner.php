@@ -19,6 +19,7 @@ try {
 	$stmt->execute([':id' => $id]);
 	$banner = $stmt->fetch(PDO::FETCH_ASSOC);
 
+	// SECURITY NOTE: Competition banners are intentionally public - no authentication required
 	if (!$banner || $banner['banner_data'] === null) {
 		http_response_code(404);
 		echo 'Not found';

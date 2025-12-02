@@ -39,8 +39,8 @@ if (!validate_username($username)) {
 	json_response(400, ['error' => 'Username must be 3-30 characters and alphanumeric/underscore only']);
 }
 
-if (strlen($password) < 12 || strlen($password) > 30) {
-	json_response(400, ['error' => 'Password must be between 12 and 30 characters']);
+if (strlen($password) < 12 || strlen($password) > 128) {
+	json_response(400, ['error' => 'Password must be between 12 and 128 characters']);
 }
 
 if (!preg_match('/[A-Z]/', $password) || !preg_match('/[a-z]/', $password) || !preg_match('/[0-9]/', $password) || !preg_match('/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~`]/', $password)) {
@@ -72,11 +72,13 @@ try {
 
 	json_response(201, ['message' => 'Account created successfully']);
 } catch (PDOException $e) {
+	// Use generic error for ALL failures to prevent account enumeration
 	if ($e->getCode() === '23505') {
 		error_log('signup duplicate detected: ' . $e->getMessage());
-		json_response(400, ['error' => 'Unable to create account. Please check your details and try again.']);
+	} else {
+		error_log('signup failed: ' . $e->getMessage());
 	}
-
-	error_log('signup failed: ' . $e->getMessage());
+	
+	// Same generic error for both duplicate and other failures
 	json_response(500, ['error' => 'Server error']);
 }

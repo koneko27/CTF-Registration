@@ -20,6 +20,8 @@ try {
 	$stmt->execute([':id' => $id]);
 	$avatar = $stmt->fetch(PDO::FETCH_ASSOC);
 	
+	// SECURITY NOTE: Avatars are intentionally public - no authentication required
+	// This allows profile pictures to be displayed in public contexts
 	if (!$avatar || $avatar['avatar_data'] === null) {
 		// Return default transparent 1x1 pixel to prevent user enumeration
 		header('Content-Type: image/png');

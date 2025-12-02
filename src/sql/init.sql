@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
 	avatar_updated_at TIMESTAMP DEFAULT NULL,
 	bio TEXT DEFAULT NULL,
 	location VARCHAR(100) DEFAULT NULL,
+	email_verified BOOLEAN DEFAULT FALSE,
+	locked_until TIMESTAMP DEFAULT NULL,
 	updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
 	created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -44,8 +46,8 @@ CREATE TABLE IF NOT EXISTS competition_registrations (
 	registration_status VARCHAR(20) NOT NULL DEFAULT 'pending',
 	payment_status VARCHAR(20) DEFAULT 'unpaid',
 	registration_notes TEXT DEFAULT NULL,
-	score INTEGER DEFAULT 0,
-	rank INTEGER DEFAULT NULL,
+	score INTEGER DEFAULT 0 CHECK (score >= 0 AND score <= 1000000),
+	rank INTEGER DEFAULT NULL CHECK (rank IS NULL OR (rank > 0 AND rank <= 100000)),
 	registered_at TIMESTAMP NOT NULL DEFAULT NOW(),
 	updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -65,3 +67,14 @@ CREATE TABLE IF NOT EXISTS user_activity (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_activity_user_created ON user_activity (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS failed_login_attempts (
+	id BIGSERIAL PRIMARY KEY,
+	identifier VARCHAR(255) NOT NULL,
+	attempt_at TIMESTAMP NOT NULL DEFAULT NOW(),
+	ip_address VARCHAR(45),
+	user_agent TEXT,
+	created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_failed_login_identifier ON failed_login_attempts (identifier, attempt_at DESC);

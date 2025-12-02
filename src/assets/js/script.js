@@ -23,7 +23,7 @@ const THEME_STORAGE_KEY = 'koneko-theme';
 document.addEventListener('DOMContentLoaded', init);
 
 // Event delegation for navigation
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
 	const navigateTarget = e.target.closest('[data-action="navigate"]');
 	if (navigateTarget) {
 		e.preventDefault();
@@ -69,16 +69,25 @@ async function init() {
 			minLoadTime,
 			Promise.race([sessionTask, maxWaitTime])
 		]);
-		
+
 		applyUserToUI();
 	} catch (err) {
 		console.error('Initialization error:', err);
 	} finally {
 		hideLoader();
-		
+
+
 		const initialPage = window.location.hash.replace('#', '') || 'home';
 		if (initialPage.startsWith('reset-password')) {
-			showPage('not-found');
+			const params = new URLSearchParams(initialPage.replace('reset-password', ''));
+			const token = params.get('token');
+			if (token) {
+				showPage('reset-password');
+				const tokenInput = document.getElementById('reset-token');
+				if (tokenInput) tokenInput.value = token;
+			} else {
+				showPage('forgot-password');
+			}
 		} else {
 			showPage(initialPage);
 		}
@@ -86,7 +95,15 @@ async function init() {
 		window.addEventListener('hashchange', () => {
 			const page = window.location.hash.replace('#', '') || 'home';
 			if (page.startsWith('reset-password')) {
-				showPage('not-found');
+				const params = new URLSearchParams(page.replace('reset-password', ''));
+				const token = params.get('token');
+				if (token) {
+					showPage('reset-password');
+					const tokenInput = document.getElementById('reset-token');
+					if (tokenInput) tokenInput.value = token;
+				} else {
+					showPage('forgot-password');
+				}
 			} else {
 				showPage(page);
 			}
@@ -947,7 +964,7 @@ function showPage(pageId) {
 		state.currentPage = pageId;
 		setActiveNavLink(pageId);
 		setDocumentTitle(pageId);
-		
+
 		if (pageId === 'signup') {
 			setTimeout(() => {
 				setupPasswordStrength();
@@ -1061,7 +1078,7 @@ function wireAuthForms() {
 
 	if (policyModal && closePolicyModal) {
 		const close = () => policyModal.classList.remove('active');
-		
+
 		closePolicyModal.addEventListener('click', close);
 		policyModal.addEventListener('click', (e) => {
 			if (e.target === policyModal) close();
@@ -1103,6 +1120,71 @@ function wireAuthForms() {
 					body: payload,
 				});
 				notify('Account created. Please sign in.', 'success');
+				showPage('signin');
+				window.location.hash = 'signin';
+			} catch (err) {
+				notify(err.message, 'error');
+			}
+		});
+	}
+
+	// Forgot Password Form
+	const forgotPasswordForm = document.getElementById('forgot-password-form');
+	if (forgotPasswordForm) {
+		forgotPasswordForm.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			const email = forgotPasswordForm.querySelector('input[name="email"]')?.value.trim() || '';
+
+			if (!email) {
+				notify('Email is required', 'error');
+				return;
+			}
+
+			try {
+				await apiRequest('forgot_password.php', {
+					method: 'POST',
+					body: { email },
+					requireCsrf: false,
+				});
+				notify('If an account exists with this email, a password reset link has been sent. Please check your inbox.', 'success');
+				forgotPasswordForm.reset();
+			} catch (err) {
+				notify(err.message, 'error');
+			}
+		});
+	}
+
+	// Reset Password Form
+	const resetPasswordForm = document.getElementById('reset-password-form');
+	if (resetPasswordForm) {
+		resetPasswordForm.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			const token = resetPasswordForm.querySelector('input[name="token"]')?.value.trim() || '';
+			const newPassword = resetPasswordForm.querySelector('input[name="newPassword"]')?.value || '';
+			const confirmPassword = resetPasswordForm.querySelector('input[name="confirmPassword"]')?.value || '';
+
+			if (!token) {
+				notify('Invalid reset token', 'error');
+				return;
+			}
+
+			if (!newPassword || !confirmPassword) {
+				notify('Please fill in all fields', 'error');
+				return;
+			}
+
+			if (newPassword !== confirmPassword) {
+				notify('Passwords do not match', 'error');
+				return;
+			}
+
+			try {
+				await apiRequest('reset_password.php', {
+					method: 'POST',
+					body: { token, newPassword, confirmPassword },
+					requireCsrf: false,
+				});
+				notify('Password reset successfully. You can now sign in with your new password.', 'success');
 				showPage('signin');
 				window.location.hash = 'signin';
 			} catch (err) {
@@ -1189,7 +1271,7 @@ function setupAdminUI() {
 
 	const tabButtons = adminPage.querySelectorAll('.admin-tab');
 	tabButtons.forEach((btn) => {
-        btn.addEventListener('click', () => {
+		btn.addEventListener('click', () => {
 			const tabKey = btn.dataset.tab;
 			if (!tabKey) return;
 			setActiveAdminTab(tabKey);
@@ -1208,8 +1290,8 @@ function setupAdminUI() {
 						break;
 				}
 			}
-        });
-    });
+		});
+	});
 
 	const addForm = document.getElementById('addCompetitionForm');
 	if (addForm) {
@@ -1719,7 +1801,7 @@ function formatDate(dateString) {
 	if (!dateString) return 'N/A';
 	const date = new Date(dateString);
 	if (Number.isNaN(date.getTime())) return dateString;
-	
+
 	return new Intl.DateTimeFormat('en-US', {
 		timeZone: 'Asia/Jakarta',
 		year: 'numeric',
@@ -1736,17 +1818,17 @@ function formatDateTimeLocal(dateString) {
 	if (!dateString) return '';
 	const date = new Date(dateString);
 	if (Number.isNaN(date.getTime())) return '';
-	
-	const options = { 
+
+	const options = {
 		timeZone: 'Asia/Jakarta',
 		year: 'numeric', month: '2-digit', day: '2-digit',
 		hour: '2-digit', minute: '2-digit', second: '2-digit',
 		hour12: false
 	};
-	
+
 	const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(date);
 	const part = (type) => parts.find(p => p.type === type).value;
-	
+
 	return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
 }
 
@@ -1924,13 +2006,13 @@ async function apiRequest(path, options = {}) {
 		if (opts.requireCsrf && state.csrfToken) {
 			headers['X-CSRF-Token'] = state.csrfToken;
 		}
-		
+
 		opts.headers = headers;
 		delete opts.requireCsrf;
 
 		const response = await fetch(`api/${path}`, opts);
 		clearTimeout(timeoutId);
-		
+
 		let data = {};
 		try {
 			data = await response.json();
@@ -2022,10 +2104,10 @@ function calculatePasswordStrength(password) {
 async function updatePasswordStrength(password) {
 	const signupForm = document.getElementById('signup-form');
 	if (!signupForm) return;
-	
+
 	const strengthBar = signupForm.querySelector('.strength-fill');
 	const strengthText = signupForm.querySelector('.strength-text');
-	
+
 	if (!strengthBar || !strengthText) return;
 
 	if (!password) {
@@ -2034,7 +2116,7 @@ async function updatePasswordStrength(password) {
 		strengthText.style.color = '#dc3545';
 		return;
 	}
-	
+
 	// Server-side validation (Authoritative)
 	try {
 		const response = await fetch('api/check_password_strength.php', {
@@ -2044,7 +2126,7 @@ async function updatePasswordStrength(password) {
 			},
 			body: JSON.stringify({ password })
 		});
-		
+
 		if (response.ok) {
 			const data = await response.json();
 			strengthBar.style.width = data.percentage + '%';
@@ -2080,10 +2162,10 @@ function setupPasswordStrength() {
 		setTimeout(setupPasswordStrength, 100);
 		return;
 	}
-	
+
 	let isSetup = passwordInput.dataset.strengthSetup === 'true';
 	if (isSetup) return;
-	
+
 	let debounceTimer;
 	passwordInput.addEventListener('input', (e) => {
 		const val = e.target.value;
@@ -2108,15 +2190,15 @@ function setupPasswordStrength() {
 			updatePasswordStrength(val);
 		}, 300);
 	});
-	
+
 	passwordInput.addEventListener('keyup', (e) => {
 		// Handled by input event
 	});
-	
+
 	passwordInput.addEventListener('paste', (e) => {
 		// Handled by input event (which triggers on paste too usually)
 	});
-	
+
 	passwordInput.dataset.strengthSetup = 'true';
 	// Initial check
 	if (passwordInput.value) {
@@ -2171,7 +2253,7 @@ function initMatrixRain() {
 	let columns = Math.floor(window.innerWidth / fontSize);
 
 	let drops = [];
-	
+
 	function initializeDrops() {
 		columns = Math.floor(matrixCanvas.width / fontSize);
 		drops = [];
@@ -2179,7 +2261,7 @@ function initMatrixRain() {
 			drops[i] = Math.random() * -100;
 		}
 	}
-	
+
 	function resizeCanvas() {
 		matrixCanvas.width = window.innerWidth;
 		matrixCanvas.height = window.innerHeight;
@@ -2204,7 +2286,7 @@ function initMatrixRain() {
 
 		for (let i = 0; i < drops.length; i++) {
 			const text = chars[Math.floor(Math.random() * chars.length)];
-			
+
 			const y = drops[i] * fontSize;
 			if (y > 0) {
 				matrixCtx.fillText(text, i * fontSize, y);
@@ -2221,7 +2303,7 @@ function initMatrixRain() {
 	if (matrixInterval) {
 		clearInterval(matrixInterval);
 	}
-	
+
 	matrixInterval = setInterval(draw, 50);
 }
 
