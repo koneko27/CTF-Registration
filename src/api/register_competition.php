@@ -5,6 +5,12 @@ require_once __DIR__ . '/utils.php';
 ensure_http_method('POST');
 
 $user = require_authenticated_user();
+
+$rateLimitKey = 'register_comp_' . $user['id'];
+if (!check_rate_limit($rateLimitKey, 5, 60)) {
+	json_response(429, ['error' => 'Too many registration attempts. Please try again later.']);
+}
+
 $input = require_json_input();
 
 $competitionId = isset($input['competition_id']) ? (int) $input['competition_id'] : 0;

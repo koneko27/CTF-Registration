@@ -49,6 +49,7 @@ try {
 				WHERE cr.payment_status IN (\'pending\', \'unpaid\')
 				ORDER BY cr.registered_at DESC');
 			json_response(200, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+			break; // Correctly added break
 		}
 		case 'POST': {
 			$data = payment_payload();
@@ -98,6 +99,7 @@ try {
 			]);
 
 			json_response(200, ['success' => true, 'registration' => $registration]);
+			break;
 		}
 		default:
 			header('Allow: GET, POST');

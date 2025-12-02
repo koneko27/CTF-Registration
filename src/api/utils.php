@@ -180,7 +180,6 @@ function getCurrentUser(): ?array {
 					}
 				}
 			} catch (Throwable $e) {
-				// Ignore DB errors during remember me check
 			}
 		}
 	}
@@ -411,11 +410,9 @@ function ensure_required_tables(PDO $pdo): void {
 		$pdo->exec($sql);
 	}
 	
-	// Ensure token_version exists for existing databases
 	try {
 		$pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 1");
 	} catch (Exception $e) {
-		// Ignore if already exists or other minor error
 	}
 
 	$ensured = true;
@@ -555,19 +552,17 @@ function compute_competition_status(string $startDate, string $endDate, string $
 function check_rate_limit(string $key, int $maxAttempts = 5, int $windowSeconds = 300): bool {
 	try {
 		$pdo = get_pdo();
-		ensure_required_tables($pdo); // Ensure table exists
+		ensure_required_tables($pdo); 
 		
 		$rateLimitKey = 'rate_limit_' . $key;
 		$now = time();
 		$windowStart = $now - $windowSeconds;
 
-		// Cleanup old records occasionally (1% chance)
 		if (rand(1, 100) === 1) {
 			$cleanup = $pdo->prepare("DELETE FROM rate_limits WHERE attempt_at < :window_start");
-			$cleanup->execute([':window_start' => $now - 3600]); // Clean older than 1 hour
+			$cleanup->execute([':window_start' => $now - 3600]); 
 		}
 
-		// Count attempts in window
 		$stmt = $pdo->prepare("SELECT COUNT(*) FROM rate_limits WHERE rate_key = :key AND attempt_at > :window_start");
 		$stmt->execute([
 			':key' => $rateLimitKey,
@@ -579,7 +574,6 @@ function check_rate_limit(string $key, int $maxAttempts = 5, int $windowSeconds 
 			return false;
 		}
 
-		// Record new attempt
 		$insert = $pdo->prepare("INSERT INTO rate_limits (rate_key, attempt_at) VALUES (:key, :now)");
 		$insert->execute([
 			':key' => $rateLimitKey,
@@ -589,7 +583,7 @@ function check_rate_limit(string $key, int $maxAttempts = 5, int $windowSeconds 
 		return true;
 	} catch (Throwable $e) {
 		error_log('Rate limit DB error: ' . $e->getMessage());
-		return false;
+		return false; 
 	}
 }
 
@@ -597,7 +591,7 @@ function get_rate_limit_remaining(string $key): int {
 	try {
 		$pdo = get_pdo();
 		$rateLimitKey = 'rate_limit_' . $key;
-		$windowSeconds = 300; // Default assumed from check_rate_limit usage
+		$windowSeconds = 300; 
 		$now = time();
 		$windowStart = $now - $windowSeconds;
 
@@ -608,7 +602,7 @@ function get_rate_limit_remaining(string $key): int {
 		]);
 		$count = (int) $stmt->fetchColumn();
 
-		return max(0, 5 - $count); // Assuming default max 5
+		return max(0, 5 - $count); 
 	} catch (Throwable $e) {
 		return 0;
 	}
