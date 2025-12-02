@@ -329,6 +329,7 @@ function ensure_required_tables(PDO $pdo): void {
 			bio TEXT DEFAULT NULL,
 			location VARCHAR(100) DEFAULT NULL,
 			token_version INTEGER NOT NULL DEFAULT 1,
+			locked_until TIMESTAMP DEFAULT NULL,
 			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		)",
@@ -403,7 +404,15 @@ function ensure_required_tables(PDO $pdo): void {
 			attempt_at INTEGER NOT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		)",
-		"CREATE INDEX IF NOT EXISTS idx_rate_limits_key_time ON rate_limits (rate_key, attempt_at)"
+		"CREATE INDEX IF NOT EXISTS idx_rate_limits_key_time ON rate_limits (rate_key, attempt_at)",
+		"CREATE TABLE IF NOT EXISTS failed_login_attempts (
+			id BIGSERIAL PRIMARY KEY,
+			identifier VARCHAR(255) NOT NULL,
+			ip_address VARCHAR(45) DEFAULT NULL,
+			user_agent TEXT DEFAULT NULL,
+			attempt_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)",
+		"CREATE INDEX IF NOT EXISTS idx_failed_login_identifier ON failed_login_attempts (identifier, attempt_at)"
 	];
 
 	foreach ($ddl as $sql) {
@@ -412,7 +421,9 @@ function ensure_required_tables(PDO $pdo): void {
 	
 	try {
 		$pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 1");
+		$pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP DEFAULT NULL");
 	} catch (Exception $e) {
+		// Columns may already exist
 	}
 
 	$ensured = true;
