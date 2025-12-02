@@ -106,8 +106,14 @@ try {
             json_response(200, $rows);
             break;
 
-        case 'POST':
-            $data = read_payload();
+		case 'POST':
+			// Rate limit: 1 creation per 5 minutes per admin
+			$creationRateLimitKey = 'admin_create_comp_' . $admin['id'];
+			if (!check_rate_limit($creationRateLimitKey, 1, 300)) {
+				json_response(429, ['error' => 'You can only create one competition every 5 minutes.']);
+			}
+
+			$data = read_payload();
 
             $name = sanitize_string($data['name'] ?? '');
             $category = sanitize_string($data['category'] ?? '');
