@@ -6,6 +6,10 @@ require_once __DIR__ . '/email_utils.php';
 
 ensure_http_method('POST');
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    start_secure_session();
+}
+
 // Rate limiting - 3 attempts per hour per email
 $input = require_json_input();
 $email = sanitize_string($input['email'] ?? '');
