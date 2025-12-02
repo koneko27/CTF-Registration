@@ -1,11 +1,15 @@
+<?php
+require_once __DIR__ . '/api/csp_nonce.php';
+$nonce = generate_csp_nonce();
+header('Content-Security-Policy: ' . get_csp_header($nonce));
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self';">
     <title>Koneko CTF - Capture The Flag Competition</title>
-    <style>
+    <style nonce="<?= htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8') ?>">
         :root { --bg-primary: #0a0a0f; --primary-color: #00ffff; --glass-border: rgba(255, 255, 255, 0.1); --text-secondary: #b8b8b8; --font-primary: 'Orbitron', monospace; }
         #page-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-primary); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.2s ease, visibility 0.2s ease; }
         #page-loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -92,7 +96,7 @@
                             Or maybe the cat ate it.
                         </p>
                         
-                        <button class="btn btn-primary" onclick="showPage('home'); window.location.hash='home';">
+                        <button class="btn btn-primary" data-action="navigate" data-page="home">
                             <i class="fas fa-home"></i>
                             Return Home
                         </button>
@@ -115,11 +119,11 @@
                                 and compete with the best hackers worldwide.
                             </p>
                             <div class="hero-buttons">
-                                <button class="btn btn-primary" onclick="showPage('signup')">
+                                <button class="btn btn-primary" data-action="navigate" data-page="signup">
                                     <i class="fas fa-rocket"></i>
                                     Get Started
                                 </button>
-                                <button class="btn btn-outline" onclick="showPage('competitions')">
+                                <button class="btn btn-outline" data-action="navigate" data-page="competitions">
                                     <i class="fas fa-trophy"></i>
                                     View Competitions
                                 </button>
@@ -242,11 +246,11 @@
                         <h2>Ready to Start Your Journey?</h2>
                         <p>Join thousands of cybersecurity enthusiasts and start competing in exciting CTF challenges today.</p>
                         <div class="cta-buttons">
-                            <button class="btn btn-primary" onclick="showPage('signup')">
+                            <button class="btn btn-primary" data-action="navigate" data-page="signup">
                                 <i class="fas fa-user-plus"></i>
                                 Create Account
                             </button>
-                            <button class="btn btn-outline" onclick="showPage('signin')">
+                            <button class="btn btn-outline" data-action="navigate" data-page="signin">
                                 <i class="fas fa-sign-in-alt"></i>
                                 Sign In
                             </button>
@@ -373,7 +377,7 @@
                         <div class="main-content">
                             <div class="section-header">
                                 <h2>My Competitions</h2>
-                                <button class="btn btn-outline btn-sm" onclick="showPage('competitions')">
+                                <button class="btn btn-outline btn-sm" data-action="navigate" data-page="competitions">
                                     <i class="fas fa-eye"></i>
                                     View All
                                 </button>
@@ -612,7 +616,7 @@
                                         <span class="checkmark"></span>
                                         Remember me
                                     </label>
-                                    <a href="#not-found" class="forgot-password" onclick="showPage('not-found')">Forgot password?</a>
+                                    <a href="#not-found" class="forgot-password" data-action="navigate" data-page="not-found">Forgot password?</a>
                                 </div>
                                 <button type="submit" class="btn btn-primary btn-full">
                                     <i class="fas fa-sign-in-alt"></i>
@@ -621,7 +625,7 @@
                             </form>
                             
                             <div class="auth-footer">
-                                <p>Don't have an account? <a href="#signup" onclick="showPage('signup')">Sign up here</a></p>
+                                <p>Don't have an account? <a href="#signup" data-action="navigate" data-page="signup">Sign up here</a></p>
                             </div>
                         </div>
                     </div>
@@ -726,7 +730,7 @@
                             </form>
                             
                             <div class="auth-footer">
-                                <p>Already have an account? <a href="#signin" onclick="showPage('signin')">Sign in here</a></p>
+                                <p>Already have an account? <a href="#signin" data-action="navigate" data-page="signin">Sign in here</a></p>
                             </div>
                         </div>
                     </div>
@@ -888,7 +892,7 @@
                         <div class="modal-content" style="max-width: 600px;">
                             <div class="modal-header">
                                 <h2>Edit Competition</h2>
-                                <span class="modal-close" onclick="closeEditCompetitionModal()">&times;</span>
+                                <span class="modal-close" data-action="close-modal" data-modal="editCompetitionModal">&times;</span>
                             </div>
                             <form id="editCompetitionForm">
                                 <input type="hidden" name="id" id="editCompId">
@@ -1006,7 +1010,7 @@
     </div>
 
     <script src="assets/js/script.js?v=2.1"></script>
-    <script>
+    <script nonce="<?= htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8') ?>">
         // Failsafe: Ensure loader is removed after 5 seconds even if script.js fails
         setTimeout(function() {
             var loader = document.getElementById('page-loader');

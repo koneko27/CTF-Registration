@@ -36,7 +36,7 @@ try {
 	$locationValue = $input['location'] ?? null;
 	if ($locationValue !== null) {
 		$location = sanitize_string($locationValue);
-		if (strlen($location) > 100) {
+		if (mb_strlen($location, 'UTF-8') > 100) {
 			json_response(400, ['error' => 'Location must be under 100 characters']);
 		}
 		$updates[] = 'location = :location';
@@ -46,7 +46,7 @@ try {
 	$bioValue = $input['bio'] ?? null;
 	if ($bioValue !== null) {
 		$bio = sanitize_string($bioValue);
-		if (strlen($bio) > 500) {
+		if (mb_strlen($bio, 'UTF-8') > 500) {
 			json_response(400, ['error' => 'Bio must be under 500 characters']);
 		}
 		$updates[] = 'bio = :bio';
@@ -119,14 +119,35 @@ try {
 		json_response(400, ['error' => 'No valid fields to update']);
 	}
 
-	$sql = 'UPDATE users SET ' . implode(', ', $sanitizedUpdates) . ', updated_at = NOW() WHERE id = :id RETURNING token_version';
-	$stmt = $pdo->prepare($sql);
-	$stmt->execute($params);
-	$newTokenVersion = $stmt->fetchColumn();
+	// Use transaction for password changes to ensure session invalidation happens atomically
+	if ($passwordChanged) {
+		$pdo->beginTransaction();
+	}
 
-	// Update current session token version if password changed, so this user isn't logged out
-	if ($passwordChanged && $newTokenVersion) {
-		$_SESSION['token_version'] = (int)$newTokenVersion;
+	try {
+		$sql = 'UPDATE users SET ' . implode(', ', $sanitizedUpdates) . ', updated_at = NOW() WHERE id = :id RETURNING token_version';
+		$stmt = $pdo->prepare($sql);
+		$stmt->execute($params);
+		$newTokenVersion = $stmt->fetchColumn();
+
+		if ($passwordChanged) {
+			// Invalidate all remember me sessions for this user
+			$deleteSessionsStmt = $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :user_id');
+			$deleteSessionsStmt->execute([':user_id' => $user['id']]);
+			
+			// Commit the transaction
+			$pdo->commit();
+			
+			// Update current session token version if password changed, so this user isn't logged out
+			if ($newTokenVersion) {
+				$_SESSION['token_version'] = (int)$newTokenVersion;
+			}
+		}
+	} catch (Throwable $e) {
+		if ($passwordChanged && $pdo->inTransaction()) {
+			$pdo->rollBack();
+		}
+		throw $e;
 	}
 
 	$updatedUser = getUserById((int) $user['id']);

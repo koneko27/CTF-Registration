@@ -21,10 +21,16 @@ if (strlen($identifier) > 255) {
 	json_response(400, ['error' => 'Identifier too long']);
 }
 
-$rateLimitKey = 'signin_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-if (!check_rate_limit($rateLimitKey, 5, 300)) {
-	$remaining = get_rate_limit_remaining($rateLimitKey);
-	json_response(429, ['error' => 'Too many login attempts. Please try again later.', 'retry_after' => 300]);
+// Rate limit per IP
+$rateLimitKeyIP = 'signin_ip_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+if (!check_rate_limit($rateLimitKeyIP, 10, 300)) {
+	json_response(429, ['error' => 'Too many login attempts from this IP. Please try again later.', 'retry_after' => 300]);
+}
+
+// Rate limit per account (after validation, before password check)
+$rateLimitKeyAccount = 'signin_account_' . md5(strtolower($identifier));
+if (!check_rate_limit($rateLimitKeyAccount, 5, 900)) {
+	json_response(429, ['error' => 'Too many login attempts for this account. Please try again later.', 'retry_after' => 900]);
 }
 
 try {
@@ -37,11 +43,6 @@ try {
 	if (!$user || !password_verify($password, $user['password_hash'])) {
 		error_log('Failed login attempt for identifier: ' . $identifier . ' from IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
 		json_response(401, ['error' => 'Invalid credentials']);
-	}
-	
-	$rateLimitKey = 'signin_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-	if (isset($_SESSION['rate_limit_' . $rateLimitKey])) {
-		unset($_SESSION['rate_limit_' . $rateLimitKey]);
 	}
 
 	loginUser((int) $user['id'], (string) $user['role'], (int) ($user['token_version'] ?? 1));

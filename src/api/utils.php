@@ -11,7 +11,6 @@ function json_response(int $statusCode, array $data): void {
 	header('X-Frame-Options: DENY');
 	header('X-XSS-Protection: 1; mode=block');
 	header('Referrer-Policy: strict-origin-when-cross-origin');
-	header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' https://cdnjs.cloudflare.com; style-src \'self\' \'unsafe-inline\' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src \'self\' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src \'self\' data:; connect-src \'self\';');
 	$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] === '443');
 	if ($isSecure) {
 		header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
@@ -57,7 +56,7 @@ function sanitize_string(?string $value): string {
 }
 
 function validate_full_name(string $name): bool {
-	if (strlen($name) < 1 || strlen($name) > 30) {
+	if (mb_strlen($name, 'UTF-8') < 1 || mb_strlen($name, 'UTF-8') > 30) {
 		return false;
 	}
 	if (preg_match('/[<>"\']/', $name)) {
@@ -585,10 +584,8 @@ function check_rate_limit(string $key, int $maxAttempts = 5, int $windowSeconds 
 
 		return true;
 	} catch (Throwable $e) {
-		// Fallback to session if DB fails (fail-open for usability, or fail-closed for security)
-		// Using fail-open here but logging error
 		error_log('Rate limit DB error: ' . $e->getMessage());
-		return true; 
+		return false;
 	}
 }
 

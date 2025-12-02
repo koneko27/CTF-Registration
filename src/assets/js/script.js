@@ -22,6 +22,28 @@ const THEME_STORAGE_KEY = 'koneko-theme';
 
 document.addEventListener('DOMContentLoaded', init);
 
+// Event delegation for navigation
+document.addEventListener('click', function(e) {
+	const navigateTarget = e.target.closest('[data-action="navigate"]');
+	if (navigateTarget) {
+		e.preventDefault();
+		const page = navigateTarget.dataset.page;
+		if (page) {
+			showPage(page);
+			window.location.hash = page;
+		}
+	}
+
+	const closeModalTarget = e.target.closest('[data-action="close-modal"]');
+	if (closeModalTarget) {
+		e.preventDefault();
+		const modalName = closeModalTarget.dataset.modal;
+		if (modalName === 'editCompetitionModal') {
+			closeEditCompetitionModal();
+		}
+	}
+});
+
 async function init() {
 	try {
 		initThemeToggle();
