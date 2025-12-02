@@ -119,20 +119,35 @@ try {
 		json_response(400, ['error' => 'No valid fields to update']);
 	}
 
-	$sql = 'UPDATE users SET ' . implode(', ', $sanitizedUpdates) . ', updated_at = NOW() WHERE id = :id RETURNING token_version';
-	$stmt = $pdo->prepare($sql);
-	$stmt->execute($params);
-	$newTokenVersion = $stmt->fetchColumn();
-
+	// Use transaction for password changes to ensure session invalidation happens atomically
 	if ($passwordChanged) {
-		// Invalidate all remember me sessions for this user
-		$deleteSessionsStmt = $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :user_id');
-		$deleteSessionsStmt->execute([':user_id' => $user['id']]);
-		
-		// Update current session token version if password changed, so this user isn't logged out
-		if ($newTokenVersion) {
-			$_SESSION['token_version'] = (int)$newTokenVersion;
+		$pdo->beginTransaction();
+	}
+
+	try {
+		$sql = 'UPDATE users SET ' . implode(', ', $sanitizedUpdates) . ', updated_at = NOW() WHERE id = :id RETURNING token_version';
+		$stmt = $pdo->prepare($sql);
+		$stmt->execute($params);
+		$newTokenVersion = $stmt->fetchColumn();
+
+		if ($passwordChanged) {
+			// Invalidate all remember me sessions for this user
+			$deleteSessionsStmt = $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :user_id');
+			$deleteSessionsStmt->execute([':user_id' => $user['id']]);
+			
+			// Commit the transaction
+			$pdo->commit();
+			
+			// Update current session token version if password changed, so this user isn't logged out
+			if ($newTokenVersion) {
+				$_SESSION['token_version'] = (int)$newTokenVersion;
+			}
 		}
+	} catch (Throwable $e) {
+		if ($passwordChanged && $pdo->inTransaction()) {
+			$pdo->rollBack();
+		}
+		throw $e;
 	}
 
 	$updatedUser = getUserById((int) $user['id']);

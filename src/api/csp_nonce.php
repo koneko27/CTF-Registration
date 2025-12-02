@@ -1,12 +1,7 @@
 <?php
 function generate_csp_nonce(): string {
-	if (session_status() !== PHP_SESSION_ACTIVE) {
-		session_start();
-	}
-	if (empty($_SESSION['csp_nonce'])) {
-		$_SESSION['csp_nonce'] = base64_encode(random_bytes(16));
-	}
-	return $_SESSION['csp_nonce'];
+	// Generate a unique nonce per request for better security
+	return base64_encode(random_bytes(16));
 }
 
 function get_csp_header(string $nonce): string {
