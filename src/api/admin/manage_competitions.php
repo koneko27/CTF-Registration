@@ -166,8 +166,8 @@ try {
 
             $maxParticipants = $data['max_participants'] ?? null;
             if ($maxParticipants !== null && $maxParticipants !== '') {
-                if (!ctype_digit((string) $maxParticipants) || (int) $maxParticipants < 1 || (int) $maxParticipants > 2147483647) {
-                    json_response(400, ['error' => 'Max participants must be a positive integer within valid range']);
+                if (!ctype_digit((string) $maxParticipants) || (int) $maxParticipants < 1 || (int) $maxParticipants > 1000000) {
+                    json_response(400, ['error' => 'Max participants must be between 1 and 1,000,000']);
                 }
                 $maxParticipants = (int) $maxParticipants;
             } else {
@@ -314,10 +314,10 @@ try {
                 $maxParticipants = $data['max_participants'];
                 if ($maxParticipants === null || $maxParticipants === '') {
                     $params[':max_participants'] = null;
-                } elseif (ctype_digit((string) $maxParticipants) && (int) $maxParticipants > 0 && (int) $maxParticipants <= 2147483647) {
-                    $params[':max_participants'] = (int) $maxParticipants;
+                } elseif (!ctype_digit((string) $maxParticipants) || (int) $maxParticipants < 1 || (int) $maxParticipants > 1000000) {
+                    json_response(400, ['error' => 'Max participants must be between 1 and 1,000,000']);
                 } else {
-                    json_response(400, ['error' => 'Max participants must be a positive integer within valid range']);
+                    $params[':max_participants'] = (int) $maxParticipants;
                 }
                 $fields[] = 'max_participants = :max_participants';
             }

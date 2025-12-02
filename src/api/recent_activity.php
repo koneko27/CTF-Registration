@@ -6,7 +6,7 @@ ensure_http_method('GET');
 $user = require_authenticated_user();
 
 $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
-if ($limit < 1 || $limit > 2147483647) {
+if ($limit < 1) {
 	$limit = 10;
 }
 $limit = min($limit, 50);
