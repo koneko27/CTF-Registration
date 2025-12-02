@@ -11,7 +11,6 @@ function json_response(int $statusCode, array $data): void {
 	header('X-Frame-Options: DENY');
 	header('X-XSS-Protection: 1; mode=block');
 	header('Referrer-Policy: strict-origin-when-cross-origin');
-	header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' https://cdnjs.cloudflare.com; style-src \'self\' \'unsafe-inline\' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src \'self\' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src \'self\' data:; connect-src \'self\';');
 	$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] === '443');
 	if ($isSecure) {
 		header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
