@@ -13,5 +13,10 @@ function get_csp_header(string $nonce): string {
 	       "connect-src 'self'; " .
 	       "frame-ancestors 'none'; " .
 	       "base-uri 'self'; " .
-	       "form-action 'self';";
+	       "form-action 'self'; " .
+	       "object-src 'none'; " .
+	       "media-src 'none'; " .
+	       "worker-src 'none'; " .
+	       "manifest-src 'self'; " .
+	       "upgrade-insecure-requests;";
 }
