@@ -67,7 +67,7 @@ try {
 
 	$maxParticipants = $competition['max_participants'] !== null ? (int) $competition['max_participants'] : null;
 	if ($maxParticipants !== null) {
-		$countStmt = $pdo->prepare('SELECT COUNT(*) FROM competition_registrations WHERE competition_id = :competition_id AND registration_status IN (\'pending\', \'approved\', \'waitlisted\')');
+		$countStmt = $pdo->prepare('SELECT COUNT(*) FROM competition_registrations WHERE competition_id = :competition_id AND registration_status IN (\'pending\', \'approved\', \'waitlisted\') FOR UPDATE');
 		$countStmt->execute([':competition_id' => $competitionId]);
 		$currentParticipants = (int) $countStmt->fetchColumn();
 		if ($currentParticipants >= $maxParticipants) {

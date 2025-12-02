@@ -57,7 +57,7 @@ function sanitize_string(?string $value): string {
 }
 
 function validate_full_name(string $name): bool {
-	if (strlen($name) < 1 || strlen($name) > 30) {
+	if (mb_strlen($name, 'UTF-8') < 1 || mb_strlen($name, 'UTF-8') > 30) {
 		return false;
 	}
 	if (preg_match('/[<>"\']/', $name)) {
@@ -585,10 +585,8 @@ function check_rate_limit(string $key, int $maxAttempts = 5, int $windowSeconds 
 
 		return true;
 	} catch (Throwable $e) {
-		// Fallback to session if DB fails (fail-open for usability, or fail-closed for security)
-		// Using fail-open here but logging error
 		error_log('Rate limit DB error: ' . $e->getMessage());
-		return true; 
+		return false;
 	}
 }
 

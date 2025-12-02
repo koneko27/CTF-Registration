@@ -2,6 +2,11 @@
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../utils.php';
 
+$rateLimitKey = 'admin_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+if (!check_rate_limit($rateLimitKey, 30, 60)) {
+	json_response(429, ['error' => 'Too many requests. Please try again later.']);
+}
+
 require_authenticated_user(true);
 
 try {
