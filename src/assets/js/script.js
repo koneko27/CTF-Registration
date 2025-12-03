@@ -1090,13 +1090,6 @@ function wireAuthForms() {
 		signupForm.addEventListener('submit', async (event) => {
 			event.preventDefault();
 
-			// Check if terms are agreed
-			const agreeToTerms = signupForm.querySelector('input[name="agreeToTerms"]')?.checked;
-			if (!agreeToTerms) {
-				notify('Please agree to the Terms of Service and Privacy Policy', 'error');
-				return;
-			}
-
 			const payload = {
 				fullName: signupForm.querySelector('input[name="fullName"]')?.value.trim() || '',
 				email: signupForm.querySelector('input[name="email"]')?.value.trim() || '',
