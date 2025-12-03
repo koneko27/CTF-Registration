@@ -1930,6 +1930,16 @@ async function performSignOut() {
 	state.admin.registrations = [];
 	state.recentActivity = [];
 	applyUserToUI();
+
+	// Clear signin form
+	const signinForm = document.getElementById('signin-form');
+	if (signinForm) {
+		const identifierInput = signinForm.querySelector('input[name="identifier"]');
+		const passwordInput = signinForm.querySelector('input[name="password"]');
+		if (identifierInput) identifierInput.value = '';
+		if (passwordInput) passwordInput.value = '';
+	}
+
 	notify('Signed out', 'success');
 	showPage('signin');
 	window.location.hash = 'signin';

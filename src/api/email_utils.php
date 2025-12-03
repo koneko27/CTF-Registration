@@ -20,73 +20,145 @@ function send_email(string $to, string $toName, string $subject, string $htmlBod
 	$fromName = getenv('SMTP_FROM_NAME') ?: 'Koneko CTF';
 
 	if (!$smtpUsername || !$smtpPassword) {
-		error_log('SMTP credentials not configured');
+		error_log('[EMAIL] SMTP credentials not configured');
 		return false;
 	}
 
+	error_log("[EMAIL] Attempting to send email to: $to");
+	error_log("[EMAIL] Using SMTP: $smtpHost:$smtpPort with username: $smtpUsername");
+
 	try {
 		// Create SMTP connection
+		error_log("[EMAIL] Connecting to SMTP server...");
 		$smtp = fsockopen($smtpHost, $smtpPort, $errno, $errstr, 10);
 		if (!$smtp) {
-			error_log("SMTP connection failed: $errstr ($errno)");
+			error_log("[EMAIL] SMTP connection failed: $errstr ($errno)");
 			return false;
 		}
 
+		// Helper function to read and log SMTP responses
+		$readResponse = function() use ($smtp, &$lastResponse) {
+			$response = fgets($smtp, 512);
+			$lastResponse = $response;
+			error_log("[EMAIL] SMTP Response: " . trim($response));
+			return $response;
+		};
+
 		// Read server greeting
-		fgets($smtp, 512);
+		error_log("[EMAIL] Reading server greeting...");
+		$readResponse();
 
 		// Send EHLO
+		error_log("[EMAIL] Sending EHLO...");
 		fputs($smtp, "EHLO " . gethostname() . "\r\n");
-		fgets($smtp, 512);
-		fgets($smtp, 512);
-		fgets($smtp, 512);
-		fgets($smtp, 512);
+		// Read all EHLO responses until we get a line that doesn't start with 250-
+		do {
+			$response = $readResponse();
+		} while (strpos($response, '250-') === 0);
 
 		// Start TLS
+		error_log("[EMAIL] Starting TLS...");
 		fputs($smtp, "STARTTLS\r\n");
-		fgets($smtp, 512);
+		$tlsResponse = $readResponse();
 		
-		stream_socket_enable_crypto($smtp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-
-		// Send EHLO again after TLS
-		fputs($smtp, "EHLO " . gethostname() . "\r\n");
-		fgets($smtp, 512);
-		fgets($smtp, 512);
-		fgets($smtp, 512);
-		fgets($smtp, 512);
-
-		// Authenticate
-		fputs($smtp, "AUTH LOGIN\r\n");
-		fgets($smtp, 512);
-		fputs($smtp, base64_encode($smtpUsername) . "\r\n");
-		fgets($smtp, 512);
-		fputs($smtp, base64_encode($smtpPassword) . "\r\n");
-		$authResponse = fgets($smtp, 512);
-		
-		if (strpos($authResponse, '235') === false) {
-			error_log('SMTP authentication failed: ' . $authResponse);
+		if (strpos($tlsResponse, '220') === false) {
+			error_log("[EMAIL] STARTTLS failed: $tlsResponse");
 			fclose($smtp);
 			return false;
 		}
 
+		error_log("[EMAIL] Enabling TLS encryption...");
+		$cryptoResult = stream_socket_enable_crypto($smtp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+		if (!$cryptoResult) {
+			error_log("[EMAIL] Failed to enable TLS encryption");
+			fclose($smtp);
+			return false;
+		}
+
+		// Send EHLO again after TLS
+		error_log("[EMAIL] Sending EHLO after TLS...");
+		fputs($smtp, "EHLO " . gethostname() . "\r\n");
+		do {
+			$response = $readResponse();
+		} while (strpos($response, '250-') === 0);
+
+		// Authenticate
+		error_log("[EMAIL] Starting authentication...");
+		fputs($smtp, "AUTH LOGIN\r\n");
+		$authInitResponse = $readResponse();
+		
+		if (strpos($authInitResponse, '334') === false) {
+			error_log("[EMAIL] AUTH LOGIN failed: $authInitResponse");
+			fclose($smtp);
+			return false;
+		}
+
+		error_log("[EMAIL] Sending username...");
+		fputs($smtp, base64_encode($smtpUsername) . "\r\n");
+		$usernameResponse = $readResponse();
+		
+		if (strpos($usernameResponse, '334') === false) {
+			error_log("[EMAIL] Username submission failed: $usernameResponse");
+			fclose($smtp);
+			return false;
+		}
+
+		error_log("[EMAIL] Sending password...");
+		fputs($smtp, base64_encode($smtpPassword) . "\r\n");
+		$authResponse = $readResponse();
+		
+		if (strpos($authResponse, '235') === false) {
+			error_log("[EMAIL] SMTP authentication failed: $authResponse");
+			error_log("[EMAIL] This usually means:");
+			error_log("[EMAIL]   1. Invalid Gmail App Password");
+			error_log("[EMAIL]   2. 2-Step Verification not enabled on Gmail account");
+			error_log("[EMAIL]   3. App Password expired or revoked");
+			error_log("[EMAIL] Generate new App Password at: https://myaccount.google.com/apppasswords");
+			fclose($smtp);
+			return false;
+		}
+
+		error_log("[EMAIL] Authentication successful!");
+
 		// Send email
+		error_log("[EMAIL] Sending MAIL FROM...");
 		fputs($smtp, "MAIL FROM: <$fromEmail>\r\n");
-		fgets($smtp, 512);
+		$mailFromResponse = $readResponse();
 		
+		if (strpos($mailFromResponse, '250') === false) {
+			error_log("[EMAIL] MAIL FROM failed: $mailFromResponse");
+			fclose($smtp);
+			return false;
+		}
+
+		error_log("[EMAIL] Sending RCPT TO...");
 		fputs($smtp, "RCPT TO: <$to>\r\n");
-		fgets($smtp, 512);
+		$rcptResponse = $readResponse();
 		
+		if (strpos($rcptResponse, '250') === false) {
+			error_log("[EMAIL] RCPT TO failed: $rcptResponse");
+			fclose($smtp);
+			return false;
+		}
+
+		error_log("[EMAIL] Sending DATA command...");
 		fputs($smtp, "DATA\r\n");
-		fgets($smtp, 512);
+		$dataResponse = $readResponse();
+		
+		if (strpos($dataResponse, '354') === false) {
+			error_log("[EMAIL] DATA command failed: $dataResponse");
+			fclose($smtp);
+			return false;
+		}
 
 		// Email headers and body
 		$boundary = md5(uniqid(time()));
 		$safeFromName = sanitize_email_header($fromName);
-	$headers = "From: $safeFromName <$fromEmail>\r\n";
+		$headers = "From: $safeFromName <$fromEmail>\r\n";
 		$safeToName = sanitize_email_header($toName);
-	$headers .= "To: $safeToName <$to>\r\n";
+		$headers .= "To: $safeToName <$to>\r\n";
 		$safeSubject = sanitize_email_header($subject);
-	$headers .= "Subject: $safeSubject\r\n";
+		$headers .= "Subject: $safeSubject\r\n";
 		$headers .= "MIME-Version: 1.0\r\n";
 		$headers .= "Content-Type: multipart/alternative; boundary=\"$boundary\"\r\n";
 		$headers .= "\r\n";
@@ -103,17 +175,28 @@ function send_email(string $to, string $toName, string $subject, string $htmlBod
 		$body .= $htmlBody . "\r\n\r\n";
 		$body .= "--$boundary--\r\n";
 
+		error_log("[EMAIL] Sending email content...");
 		fputs($smtp, $headers . $body);
 		fputs($smtp, ".\r\n");
-		fgets($smtp, 512);
+		$sendResponse = $readResponse();
+		
+		if (strpos($sendResponse, '250') === false) {
+			error_log("[EMAIL] Email sending failed: $sendResponse");
+			fclose($smtp);
+			return false;
+		}
+
+		error_log("[EMAIL] Email sent successfully!");
 
 		// Quit
 		fputs($smtp, "QUIT\r\n");
+		$readResponse();
 		fclose($smtp);
 
 		return true;
 	} catch (Throwable $e) {
-		error_log('Email sending failed: ' . $e->getMessage());
+		error_log('[EMAIL] Exception during email sending: ' . $e->getMessage());
+		error_log('[EMAIL] Stack trace: ' . $e->getTraceAsString());
 		return false;
 	}
 }
