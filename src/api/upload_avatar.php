@@ -36,13 +36,19 @@ if (strpos($originalName, "\0") !== false) {
 }
 
 // Prevent path traversal in filename
-if (preg_match('/\.\./', $originalName) || preg_match('/[\/\\\\]/', $originalName)) {
+if (strpos($originalName, '..') !== false || strpos($originalName, '/') !== false || strpos($originalName, '\\') !== false) {
 	json_response(400, ['error' => 'Invalid file name detected']);
 }
 
-// Block dangerous extensions (including those with null bytes or double extensions)
-if (preg_match('/\.(php|phtml|php3|php4|php5|php7|phps|pht|phar|inc|hta|htaccess|sh|exe|com|bat|cgi|pl|py|rb|java|jar|war|asp|aspx|jsp|swf)($|\.|\x00)/i', $originalName)) {
-	json_response(400, ['error' => 'Invalid file extension detected']);
+// Block dangerous extensions (more efficient check)
+$dangerousExtensions = ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'phps', 'pht', 'phar', 'inc', 'hta', 'htaccess', 'sh', 'exe', 'com', 'bat', 'cgi', 'pl', 'py', 'rb', 'java', 'jar', 'war', 'asp', 'aspx', 'jsp', 'swf'];
+
+// Check all parts of filename for dangerous extensions (prevents double extension attacks)
+$nameParts = explode('.', strtolower($originalName));
+foreach ($nameParts as $part) {
+	if (in_array($part, $dangerousExtensions, true)) {
+		json_response(400, ['error' => 'Invalid file extension detected']);
+	}
 }
 
 try {

@@ -197,11 +197,14 @@ function getCurrentUser(): ?array {
 					setcookie('remember_me', '', time() - 3600, '/', '', false, true);
 				}
 				
-				// Periodically clean up expired sessions (1% chance per request)
-				if (rand(1, 100) === 1) {
+				// Periodically clean up expired sessions (deterministic time-based approach)
+				// Clean up every 10 minutes at most (tracked per process)
+				static $lastCleanup = 0;
+				if (time() - $lastCleanup > 600) { // 10 minutes
 					try {
 						$cleanupStmt = $pdo->prepare('DELETE FROM user_sessions WHERE expires_at < NOW()');
 						$cleanupStmt->execute();
+						$lastCleanup = time();
 					} catch (Throwable $e) {
 					}
 				}
