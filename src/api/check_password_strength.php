@@ -1,7 +1,11 @@
 <?php
 require_once __DIR__ . '/utils.php';
 
-ensure_http_method('POST');
+// Manually check HTTP method without CSRF - this is a read-only public endpoint
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Allow: POST');
+    json_response(405, ['error' => 'Method Not Allowed']);
+}
 
 $input = require_json_input();
 $password = (string) ($input['password'] ?? '');

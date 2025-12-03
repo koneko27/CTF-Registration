@@ -128,6 +128,12 @@ function start_secure_session(): void {
 }
 
 function ensure_http_method(string ...$allowed): void {
+	// Check if last parameter is boolean indicating to skip CSRF
+	$skipCsrf = false;
+	if (count($allowed) > 0 && is_bool(end($allowed))) {
+		$skipCsrf = array_pop($allowed);
+	}
+	
 	$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 	$normalizedAllowed = array_map('strtoupper', $allowed);
 
@@ -137,7 +143,7 @@ function ensure_http_method(string ...$allowed): void {
 	}
 
 	$unsafeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
-	if (in_array($method, $unsafeMethods, true)) {
+	if (!$skipCsrf && in_array($method, $unsafeMethods, true)) {
 		start_secure_session();
 		verify_csrf_token();
 	}

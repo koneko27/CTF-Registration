@@ -18,7 +18,7 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
     </style>
-    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="assets/css/styles.css">`n    <link rel="stylesheet" href="assets/css/utility.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -38,7 +38,7 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                 <a href="#competitions" class="nav-link" data-page="competitions">Competitions</a>
                 <a href="#dashboard" class="nav-link" data-page="dashboard">Dashboard</a>
                 <a href="#profile" class="nav-link" data-page="profile">Profile</a>
-                <a href="#admin" class="nav-link" id="admin-link" data-page="admin" style="display: none; color: #f59e0b;">
+                <a href="#admin" class="nav-link admin-link display-none" id="admin-link" data-page="admin">
                     <i class="fas fa-crown"></i> Admin Panel
                 </a>
                 <a href="#logout" class="nav-link" data-page="logout">Log Out</a>
@@ -478,7 +478,7 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                                             <h3>John "Koneko" Hacker</h3>
                                             <p>john@example.com</p>
                                             <p><i class="fas fa-map-marker-alt"></i> Jakarta, Indonesia</p>
-                                            <p class="profile-bio" style="display: none;"><i class="fas fa-quote-left"></i> <span class="bio-text"></span></p>
+                                            <p class="profile-bio profile-bio-hidden"><i class="fas fa-quote-left"></i> <span class="bio-text"></span></p>
                                             <p><i class="fas fa-calendar"></i> Joined 1/15/2024</p>
                                         </div>
                                     </div>
@@ -503,7 +503,7 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                                         </div>
                                     </div>
                                     
-                                    <div class="form-actions" style="display: none;" id="profile-actions">
+                                    <div class="form-actions" id="profile-actions">
                                         <button class="btn btn-primary">
                                             <i class="fas fa-save"></i>
                                             Save Changes
@@ -706,19 +706,19 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                                 </div>
                                 <div class="form-options">
                                     <div id="policyModal" class="modal">
-                                        <div class="modal-content" style="max-width: 700px;">
+                                        <div class="modal-content modal-content-wide">
                                             <div class="modal-header">
                                                 <h2 id="policyModalTitle">Terms of Service</h2>
                                                 <span class="modal-close" id="closePolicyModal">&times;</span>
                                             </div>
-                                            <div class="modal-body" id="policyModalBody" style="max-height: 60vh; overflow-y: auto; padding: 1rem; line-height: 1.6;">
+                                            <div class="modal-body modal-body-scrollable" id="policyModalBody">
                                                 <!-- Content will be injected here -->
                                             </div>
                                         </div>
                                     </div>
 
                                     <label class="checkbox">
-                                        <input type="checkbox" required>
+                                        <input type="checkbox" name="agreeToTerms" required>
                                         <span class="checkmark"></span>
                                         I agree to the <a href="#" class="policy-link" data-type="tos">Terms of Service</a> and <a href="#" class="policy-link" data-type="privacy">Privacy Policy</a>
                                     </label>

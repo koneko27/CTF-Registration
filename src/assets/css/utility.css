@@ -1,0 +1,166 @@
+/* Utility CSS Classes - Replace Inline Styles */
+
+/* Display utilities */
+.display-none { display: none !important; }
+.display-block { display: block !important; }
+.text-center { text-align: center !important; }
+
+/* Admin link color */
+.nav-link.admin-link {
+    color: #f59e0b !important;
+}
+
+/* Auth content centered */
+.auth-content-centered {
+    text-align: center;
+    display: block;
+}
+
+/* Auth mascot spacing */
+.auth-mascot-spacing {
+    margin-bottom: 2rem;
+}
+
+/* Cat face sleeping eyes */
+.cat-eyes-sleeping .eye {
+    height: 2px !important;
+    border-radius: 0 !important;
+}
+
+/* Cat mouth happy */
+.cat-mouth-happy .mouth-left {
+    transform: rotate(15deg);
+}
+
+.cat-mouth-happy .mouth-right {
+    transform: rotate(-15deg);
+}
+
+/* Cat ears tilted */
+.cat-ears-tilted .ear-left {
+    transform: rotate(-20deg);
+}
+
+.cat-ears-tilted .ear-right {
+    transform: rotate(20deg);
+}
+
+/* 404 Page styles */
+.error-404-title {
+    font-family: var(--font-primary);
+    font-size: 4rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.error-404-heading {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.error-404-description {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+}
+
+/* Profile bio hidden */
+.profile-bio-hidden {
+    display: none;
+}
+
+/* Profile actions hidden */
+.profile-actions-hidden {
+    display: none;
+}
+
+#profile-actions {
+    display: none;
+}
+
+#profile-actions.show {
+    display: block;
+}
+
+/* Modal wide */
+.modal-content-wide {
+    max-width: 700px;
+}
+
+/* Modal scrollable body */
+.modal-body-scrollable {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 1rem;
+    line-height: 1.6;
+}
+
+/* Competition modal size */
+.modal-content-medium {
+    max-width: 600px;
+}
+
+/* Email template styles (for email_utils.php) */
+.email-centered {
+    text-align: center;
+}
+
+.email-code-box {
+    background: #fff;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    word-break: break-all;
+}
+
+/* Additional utility classes for JavaScript dynamic styling - CSP compliant */
+
+/* Notification styles */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    z-index: 3000;
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+
+.notification-success {
+    background-color: #28a745;
+}
+
+.notification-error {
+    background-color: #dc3545;
+}
+
+.notification-info {
+    background-color: #17a2b8;
+}
+
+.notification-warning {
+    background-color: #ffc107;
+    color: #000;
+}
+
+/* Display utilities for auth state */
+.auth-show { display: block !important; }
+.auth-hide { display: none !important; }
+
+/* Password strength levels */
+.strength-fill {
+    transition: width 0.3s ease, background-color 0.3s ease;
+    height: 100%;
+}
+
+.strength-weak { width: 25% !important; background-color: #dc3545 !important; }
+.strength-fair { width: 50% !important; background-color: #ffc107 !important; }
+.strength-good { width: 75% !important; background-color: #17a2b8 !important; }
+.strength-strong { width: 100% !important; background-color: #28a745 !important; }
+
+.strength-text-weak { color: #dc3545 !important; }
+.strength-text-fair { color: #ffc107 !important; }
+.strength-text-good { color: #17a2b8 !important; }
+.strength-text-strong { color: #28a745 !important; }

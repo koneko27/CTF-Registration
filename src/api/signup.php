@@ -72,13 +72,14 @@ try {
 
 	json_response(201, ['message' => 'Account created successfully']);
 } catch (PDOException $e) {
-	// Use generic error for ALL failures to prevent account enumeration
+	// Handle duplicate email/username violations with clear user-facing error
 	if ($e->getCode() === '23505') {
 		error_log('signup duplicate detected: ' . $e->getMessage());
+		// Return user-friendly error without revealing which field is duplicate (security)
+		json_response(400, ['error' => 'Email or username already registered. Please use a different one.']);
 	} else {
 		error_log('signup failed: ' . $e->getMessage());
+		// Generic error for non-duplicate failures
+		json_response(500, ['error' => 'Server error. Please try again later.']);
 	}
-	
-	// Same generic error for both duplicate and other failures
-	json_response(500, ['error' => 'Server error']);
 }

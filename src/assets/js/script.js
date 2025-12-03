@@ -126,26 +126,13 @@ function notify(message, type = 'info') {
 	if (!el) {
 		el = document.createElement('div');
 		el.id = 'toast';
-		el.className = 'toast';
-		el.style.position = 'fixed';
-		el.style.top = '20px';
-		el.style.right = '20px';
-		el.style.padding = '12px 16px';
-		el.style.borderRadius = '8px';
-		el.style.fontSize = '0.9rem';
-		el.style.zIndex = '3000';
+		el.className = 'notification';
 		document.body.appendChild(el);
 	}
 
-	const colors = {
-		success: '#16a34a',
-		error: '#dc2626',
-		info: '#2563eb',
-	};
+	// Set notification type using CSS classes
+	el.className = `notification notification-${type}`;
 	el.textContent = message;
-	el.style.backgroundColor = colors[type] || colors.info;
-	el.style.color = '#fff';
-	el.style.boxShadow = '0 10px 30px rgba(0,0,0,0.25)';
 
 	clearTimeout(el.timeoutId);
 	el.timeoutId = setTimeout(() => {
@@ -318,18 +305,19 @@ function updateAuthVisibility() {
 	const adminLink = document.getElementById('admin-link');
 	const homeLink = document.querySelector('.nav-link[data-page="home"]');
 
-	if (signinLink) signinLink.style.display = authed ? 'none' : '';
-	if (signupLink) signupLink.style.display = authed ? 'none' : '';
-	if (logoutLink) logoutLink.style.display = authed ? '' : 'none';
-	if (profileLink) profileLink.style.display = authed ? '' : 'none';
-	if (dashboardLink) dashboardLink.style.display = authed ? '' : 'none';
-	if (homeLink) homeLink.style.display = authed ? 'none' : '';
+	// Use CSS classes instead of inline styles for CSP compliance
+	if (signinLink) signinLink.classList.toggle('auth-hide', authed);
+	if (signupLink) signupLink.classList.toggle('auth-hide', authed);
+	if (logoutLink) logoutLink.classList.toggle('auth-hide', !authed);
+	if (profileLink) profileLink.classList.toggle('auth-hide', !authed);
+	if (dashboardLink) dashboardLink.classList.toggle('auth-hide', !authed);
+	if (homeLink) homeLink.classList.toggle('auth-hide', authed);
 	if (adminLink) {
-		adminLink.style.display = authed && state.currentUser?.role === 'admin' ? '' : 'none';
+		adminLink.classList.toggle('auth-hide', !(authed && state.currentUser?.role === 'admin'));
 	}
 
 	const profileMenu = document.getElementById('user-profile-menu');
-	if (profileMenu) profileMenu.style.display = authed ? '' : 'none';
+	if (profileMenu) profileMenu.classList.toggle('auth-hide', !authed);
 }
 
 async function refreshRecentActivity() {
@@ -1101,6 +1089,14 @@ function wireAuthForms() {
 	if (signupForm) {
 		signupForm.addEventListener('submit', async (event) => {
 			event.preventDefault();
+
+			// Check if terms are agreed
+			const agreeToTerms = signupForm.querySelector('input[name="agreeToTerms"]')?.checked;
+			if (!agreeToTerms) {
+				notify('Please agree to the Terms of Service and Privacy Policy', 'error');
+				return;
+			}
+
 			const payload = {
 				fullName: signupForm.querySelector('input[name="fullName"]')?.value.trim() || '',
 				email: signupForm.querySelector('input[name="email"]')?.value.trim() || '',
