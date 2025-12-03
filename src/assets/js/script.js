@@ -1144,7 +1144,6 @@ function wireAuthForms() {
 				await apiRequest('forgot_password.php', {
 					method: 'POST',
 					body: { email },
-					requireCsrf: false,
 				});
 				notify('If an account exists with this email, a password reset link has been sent. Please check your inbox.', 'success');
 				forgotPasswordForm.reset();
@@ -1182,7 +1181,6 @@ function wireAuthForms() {
 				await apiRequest('reset_password.php', {
 					method: 'POST',
 					body: { token, newPassword, confirmPassword },
-					requireCsrf: false,
 				});
 				notify('Password reset successfully. You can now sign in with your new password.', 'success');
 				showPage('signin');
