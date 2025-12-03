@@ -704,25 +704,6 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                                         </button>
                                     </div>
                                 </div>
-                                <div class="form-options">
-                                    <div id="policyModal" class="modal">
-                                        <div class="modal-content modal-content-wide">
-                                            <div class="modal-header">
-                                                <h2 id="policyModalTitle">Terms of Service</h2>
-                                                <span class="modal-close" id="closePolicyModal">&times;</span>
-                                            </div>
-                                            <div class="modal-body modal-body-scrollable" id="policyModalBody">
-                                                <!-- Content will be injected here -->
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <label class="checkbox">
-                                        <input type="checkbox" name="agreeToTerms" required>
-                                        <span class="checkmark"></span>
-                                        I agree to the <a href="#" class="policy-link" data-type="tos">Terms of Service</a> and <a href="#" class="policy-link" data-type="privacy">Privacy Policy</a>
-                                    </label>
-                                </div>
                                 <button type="submit" class="btn btn-primary btn-full">
                                     <i class="fas fa-user-plus"></i>
                                     Create Account
