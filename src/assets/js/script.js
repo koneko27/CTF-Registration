@@ -61,7 +61,7 @@ async function init() {
 		// Race condition: Session refresh vs Timeout
 		// Ensures loader doesn't stick for more than 1.5s even if network hangs
 		// But waits at least 200ms for smooth animation
-		const minLoadTime = new Promise(resolve => setTimeout(resolve, 200));
+		const minLoadTime = new Promise(resolve => setTimeout(resolve, 800));
 		const sessionTask = refreshSession();
 		const maxWaitTime = new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -2098,12 +2098,11 @@ function calculatePasswordStrength(password) {
 	return { score, label, color, percentage };
 }
 
-async function updatePasswordStrength(password) {
-	const signupForm = document.getElementById('signup-form');
-	if (!signupForm) return;
+async function updatePasswordStrength(password, form) {
+	if (!form) return;
 
-	const strengthBar = signupForm.querySelector('.strength-fill');
-	const strengthText = signupForm.querySelector('.strength-text');
+	const strengthBar = form.querySelector('.strength-fill');
+	const strengthText = form.querySelector('.strength-text');
 
 	if (!strengthBar || !strengthText) return;
 
@@ -2154,54 +2153,54 @@ function setupPasswordToggles() {
 }
 
 function setupPasswordStrength() {
-	const passwordInput = document.querySelector('#signup-form input[name="password"]');
-	if (!passwordInput) {
+	// Select password inputs from both signup and reset password forms
+	const passwordInputs = document.querySelectorAll('#signup-form input[name="password"], #reset-password-form input[name="newPassword"]');
+
+	if (!passwordInputs.length) {
 		setTimeout(setupPasswordStrength, 100);
 		return;
 	}
 
-	let isSetup = passwordInput.dataset.strengthSetup === 'true';
-	if (isSetup) return;
+	passwordInputs.forEach(passwordInput => {
+		let isSetup = passwordInput.dataset.strengthSetup === 'true';
+		if (isSetup) return;
 
-	let debounceTimer;
-	passwordInput.addEventListener('input', (e) => {
-		const val = e.target.value;
+		let debounceTimer;
+		passwordInput.addEventListener('input', (e) => {
+			const val = e.target.value;
+			const form = passwordInput.closest('form');
 
-		// 1. Immediate Client-Side Feedback (For "Instant" feel)
-		const est = calculatePasswordStrength(val);
-		const signupForm = document.getElementById('signup-form');
-		if (signupForm) {
-			const strengthBar = signupForm.querySelector('.strength-fill');
-			const strengthText = signupForm.querySelector('.strength-text');
-			if (strengthBar && strengthText) {
-				strengthBar.style.width = est.percentage + '%';
-				strengthBar.style.background = est.color;
-				strengthText.textContent = `Password strength: ${est.label}`;
-				strengthText.style.color = est.color;
+			// 1. Immediate Client-Side Feedback (For "Instant" feel)
+			const est = calculatePasswordStrength(val);
+
+			if (form) {
+				const strengthBar = form.querySelector('.strength-fill');
+				const strengthText = form.querySelector('.strength-text');
+				if (strengthBar && strengthText) {
+					strengthBar.style.width = est.percentage + '%';
+					strengthBar.style.background = est.color;
+					strengthText.textContent = `Password strength: ${est.label}`;
+					strengthText.style.color = est.color;
+				}
 			}
+
+			// 2. Debounced Server-Side Validation (For Accuracy/Security)
+			// Only needed if we want server-side check, but client-side is usually enough for UI feedback
+			// Keeping it for consistency if the backend API supports it
+			clearTimeout(debounceTimer);
+			debounceTimer = setTimeout(() => {
+				updatePasswordStrength(val, form);
+			}, 300);
+		});
+
+		passwordInput.dataset.strengthSetup = 'true';
+		// Initial check
+		if (passwordInput.value) {
+			passwordInput.dispatchEvent(new Event('input'));
 		}
-
-		// 2. Debounced Server-Side Validation (For Accuracy/Security)
-		clearTimeout(debounceTimer);
-		debounceTimer = setTimeout(() => {
-			updatePasswordStrength(val);
-		}, 300);
 	});
-
-	passwordInput.addEventListener('keyup', (e) => {
-		// Handled by input event
-	});
-
-	passwordInput.addEventListener('paste', (e) => {
-		// Handled by input event (which triggers on paste too usually)
-	});
-
-	passwordInput.dataset.strengthSetup = 'true';
-	// Initial check
-	if (passwordInput.value) {
-		passwordInput.dispatchEvent(new Event('input'));
-	}
 }
+
 
 function setupCompetitionFilters() {
 	const searchInput = document.getElementById('search-input');
