@@ -31,7 +31,11 @@ if (!validate_email($email)) {
 	json_response(400, ['error' => 'Invalid email format']);
 }
 
-if (!preg_match('/@(gmail\.com|binus\.ac\.id)$/iD', $email)) {
+// Normalize email to lowercase for domain check to prevent bypass
+$emailLower = strtolower($email);
+$allowedDomains = ['gmail.com', 'binus.ac.id'];
+$domain = substr(strrchr($emailLower, '@'), 1);
+if ($domain === false || !in_array($domain, $allowedDomains, true)) {
 	json_response(400, ['error' => 'Registration is restricted to @gmail.com or @binus.ac.id emails only']);
 }
 
