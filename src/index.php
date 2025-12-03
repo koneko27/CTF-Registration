@@ -349,7 +349,7 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                         </div>
                         <div class="welcome-text">
                             <h1>Dashboard</h1>
-                            <p>Monitor your progress, explore new challenges, and keep track of your cybersecurity journey—all in one place.</p>
+                            <p>Monitor your progress, explore new challenges, and keep track of your cybersecurity journey all in one place.</p>
                         </div>
                     </div>
                 </div>
