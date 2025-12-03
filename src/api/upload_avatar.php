@@ -29,8 +29,26 @@ if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
 
 // Check for double extension and dangerous extensions (e.g., file.jpg.php)
 $originalName = $file['name'] ?? '';
-if (preg_match('/\.(php|phtml|php3|php4|php5|php7|phps|pht|phar|inc|hta|htaccess|sh|exe|com|bat)($|\.)/i', $originalName)) {
-	json_response(400, ['error' => 'Invalid file extension detected']);
+
+// Prevent NULL byte injection
+if (strpos($originalName, "\0") !== false) {
+	json_response(400, ['error' => 'Invalid file name detected']);
+}
+
+// Prevent path traversal in filename
+if (strpos($originalName, '..') !== false || strpos($originalName, '/') !== false || strpos($originalName, '\\') !== false) {
+	json_response(400, ['error' => 'Invalid file name detected']);
+}
+
+// Block dangerous extensions (more efficient check)
+$dangerousExtensions = ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'phps', 'pht', 'phar', 'inc', 'hta', 'htaccess', 'sh', 'exe', 'com', 'bat', 'cgi', 'pl', 'py', 'rb', 'java', 'jar', 'war', 'asp', 'aspx', 'jsp', 'swf'];
+
+// Check all parts of filename for dangerous extensions (prevents double extension attacks)
+$nameParts = explode('.', strtolower($originalName));
+foreach ($nameParts as $part) {
+	if (in_array($part, $dangerousExtensions, true)) {
+		json_response(400, ['error' => 'Invalid file extension detected']);
+	}
 }
 
 try {

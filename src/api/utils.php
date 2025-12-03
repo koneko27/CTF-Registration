@@ -183,6 +183,29 @@ function getCurrentUser(): ?array {
 							$userId = $_SESSION['user_id'];
 							$sessionTokenVersion = $_SESSION['token_version'];
 						}
+					} else {
+						// Invalid validator - delete the session and cookie for security
+						try {
+							$delStmt = $pdo->prepare('DELETE FROM user_sessions WHERE selector = :selector');
+							$delStmt->execute([':selector' => $selector]);
+						} catch (Throwable $e) {
+						}
+						setcookie('remember_me', '', time() - 3600, '/', '', false, true);
+					}
+				} else {
+					// Expired or non-existent session - clean up cookie
+					setcookie('remember_me', '', time() - 3600, '/', '', false, true);
+				}
+				
+				// Periodically clean up expired sessions (deterministic time-based approach)
+				// Clean up every 10 minutes at most (tracked per process)
+				static $lastCleanup = 0;
+				if (time() - $lastCleanup > 600) { // 10 minutes
+					try {
+						$cleanupStmt = $pdo->prepare('DELETE FROM user_sessions WHERE expires_at < NOW()');
+						$cleanupStmt->execute();
+						$lastCleanup = time();
+					} catch (Throwable $e) {
 					}
 				}
 			} catch (Throwable $e) {
