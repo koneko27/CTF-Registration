@@ -647,7 +647,7 @@ function renderCompetitionList() {
 			const compStatus = String(comp.status || '').toLowerCase();
 			switch (status) {
 				case 'upcoming':
-					return compStatus === 'registration_open';
+					return ['registration_open', 'upcoming', 'registration_closed'].includes(compStatus);
 				case 'ongoing':
 					return compStatus === 'ongoing';
 				case 'ended':
