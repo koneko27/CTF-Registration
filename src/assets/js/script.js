@@ -974,6 +974,7 @@ function setDocumentTitle(pageId) {
 		competitions: 'CTF Competitions - Koneko CTF',
 		dashboard: 'Dashboard - Koneko CTF',
 		profile: 'Profile Management - Koneko CTF',
+		help: 'Help Center - Koneko CTF',
 		signin: 'Sign In - Koneko CTF',
 		signup: 'Sign Up - Koneko CTF',
 		'forgot-password': 'Forgot Password - Koneko CTF',

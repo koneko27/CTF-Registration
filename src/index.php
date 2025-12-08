@@ -36,6 +36,7 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
             <div class="nav-menu" id="nav-menu">
                 <a href="#home" class="nav-link active" data-page="home">Home</a>
                 <a href="#competitions" class="nav-link" data-page="competitions">Competitions</a>
+                <a href="#help" class="nav-link" data-page="help">Help</a>
                 <a href="#dashboard" class="nav-link" data-page="dashboard">Dashboard</a>
                 <a href="#profile" class="nav-link" data-page="profile">Profile</a>
                 <a href="#admin" class="nav-link admin-link display-none" id="admin-link" data-page="admin">
@@ -1077,6 +1078,150 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                                 </div>
                                 <button type="submit" class="btn btn-primary">Update Competition</button>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="help" class="page">
+            <section class="page-header">
+                <div class="container">
+                    <div class="header-content">
+                        <div class="header-mascot">
+                            <div class="cat-mascot small">
+                                <div class="cat-body">
+                                    <div class="cat-face">
+                                        <div class="cat-eyes">
+                                            <div class="eye left-eye"></div>
+                                            <div class="eye right-eye"></div>
+                                        </div>
+                                        <div class="cat-nose"></div>
+                                        <div class="cat-mouth">
+                                            <div class="mouth-left"></div>
+                                            <div class="mouth-right"></div>
+                                        </div>
+                                    </div>
+                                    <div class="cat-ears">
+                                        <div class="ear ear-left"></div>
+                                        <div class="ear ear-right"></div>
+                                    </div>
+                                    <div class="cat-hoodie"></div>
+                                </div>
+                            </div>
+                            <div class="speech-bubble small">
+                                <span class="speech-text">Need guidance? Start here.</span>
+                            </div>
+                        </div>
+                        <div class="header-text">
+                            <h1>Help & Documentation</h1>
+                            <p>Step-by-step guidance, FAQs, and contacts so you never get stuck.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="help-section">
+                <div class="container">
+                    <div class="help-grid">
+                        <div class="help-card">
+                            <div class="card-label">Quick Start</div>
+                            <h3>Join a Competition</h3>
+                            <ol class="help-steps">
+                                <li>Sign Up or Sign In.</li>
+                                <li>Buka menu <strong>Competitions</strong> dan pilih event.</li>
+                                <li>Klik <strong>Register</strong>, isi <strong>Team Name</strong>, lalu submit.</li>
+                                <li>Cek status di <strong>Dashboard → My Competitions</strong>.</li>
+                            </ol>
+                        </div>
+
+                        <div class="help-card">
+                            <div class="card-label">Before the Event</div>
+                            <h3>Rules & Timeline</h3>
+                            <ul class="help-list">
+                                <li>Periksa <strong>Rules</strong> pada detail kompetisi.</li>
+                                <li>Pastikan jadwal <strong>Start/End</strong> dan <strong>Registration Deadline</strong>.</li>
+                                <li>Hubungi <strong>Contact Person</strong> jika ada kendala.</li>
+                            </ul>
+                        </div>
+
+                        <div class="help-card">
+                            <div class="card-label">During the Event</div>
+                            <h3>Troubleshooting</h3>
+                            <ul class="help-list">
+                                <li>Jika tidak bisa login, gunakan <strong>Forgot Password</strong>.</li>
+                                <li>Jika banner/halaman tidak memuat, refresh & cek koneksi.</li>
+                                <li>Laporkan isu teknis ke kontak resmi kompetisi.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="faq-section">
+                <div class="container">
+                    <div class="section-header">
+                        <h2>FAQ & How-to</h2>
+                        <p>Pertanyaan umum dengan jawaban singkat supaya cepat.</p>
+                    </div>
+                    <div class="faq-grid">
+                        <details class="faq-item" open>
+                            <summary>Bagaimana cara mendaftar kompetisi?</summary>
+                            <p>Buka <strong>Competitions</strong> → pilih event → klik <strong>Register</strong> → isi nama tim → submit. Status pendaftaran muncul di <strong>Dashboard → My Competitions</strong>.</p>
+                        </details>
+                        <details class="faq-item">
+                            <summary>Apa arti status “registration_open”, “ongoing”, “completed”?</summary>
+                            <p><strong>registration_open</strong>: pendaftaran masih dibuka. <strong>ongoing</strong>: kompetisi sedang berjalan. <strong>completed</strong>: event selesai; hasil biasanya diumumkan oleh panitia.</p>
+                        </details>
+                        <details class="faq-item">
+                            <summary>Lupa password atau akun tidak bisa login?</summary>
+                            <p>Gunakan <strong>Forgot password?</strong> di halaman Sign In. Masukkan email; jika terdaftar, tautan reset dikirim. Jika tidak menerima email, cek folder spam atau hubungi kontak resmi.</p>
+                        </details>
+                        <details class="faq-item">
+                            <summary>Bagaimana mengubah profil atau avatar?</summary>
+                            <p>Buka <strong>Profile</strong> → klik <strong>Edit</strong> untuk mengubah nama, lokasi, bio. Klik <strong>Change Avatar</strong> untuk unggah foto. Jangan lupa <strong>Save Changes</strong>.</p>
+                        </details>
+                        <details class="faq-item">
+                            <summary>Siapa yang dihubungi untuk masalah pembayaran/konfirmasi?</summary>
+                            <p>Lihat <strong>Contact</strong> di kartu kompetisi. Jika masih perlu bantuan, kirim email ke <a href="mailto:support@konekoctf.com">support@konekoctf.com</a>.</p>
+                        </details>
+                        <details class="faq-item">
+                            <summary>Apakah ada panduan dasar CTF?</summary>
+                            <p>Mulai dari kategori mudah/beginner, cek write-up publik, dan pastikan memahami aturan: dilarang menyerang infrastruktur, jangan berbagi flag, hormati peserta lain.</p>
+                        </details>
+                    </div>
+                </div>
+            </section>
+
+            <section class="contact-section">
+                <div class="container">
+                    <div class="contact-card">
+                        <div>
+                            <div class="card-label">Still need help?</div>
+                            <h3>Kontak Support</h3>
+                            <p>Kirim pertanyaan teknis atau administratif ke alamat berikut:</p>
+                            <ul class="contact-list">
+                                <li>
+                                    <a href="mailto:todidiang@gmail.com" aria-label="Email support" title="Email support">
+                                        <i class="fas fa-envelope"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://discord.gg/A6vq2N3VW" target="_blank" rel="noopener" aria-label="Join Discord" title="Join Discord">
+                                        <i class="fa-brands fa-discord"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="contact-cta">
+                            <button class="btn btn-outline" data-action="navigate" data-page="competitions">
+                                <i class="fas fa-compass"></i>
+                                Browse Competitions
+                            </button>
+                            <button class="btn btn-primary" data-action="navigate" data-page="signup">
+                                <i class="fas fa-user-plus"></i>
+                                Create Account
+                            </button>
                         </div>
                     </div>
                 </div>
