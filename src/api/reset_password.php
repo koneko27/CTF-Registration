@@ -47,8 +47,13 @@ try {
 	$stmt->execute([':token_hash' => $tokenHash]);
 	$reset = $stmt->fetch(PDO::FETCH_ASSOC);
 
-	// Combine all validation checks to prevent timing attacks
-	if (!$reset || $reset['used'] || strtotime($reset['expires_at']) < time()) {
+	// Constant-time validation checks to prevent timing attacks
+	$isValid = $reset && !$reset['used'] && strtotime($reset['expires_at']) >= time();
+	
+	// Add artificial delay to normalize timing
+	usleep(random_int(50000, 150000)); // 50-150ms random delay
+	
+	if (!$isValid) {
 		json_response(400, ['error' => 'Invalid or expired reset token']);
 	}
 
