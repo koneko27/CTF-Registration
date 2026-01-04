@@ -166,7 +166,8 @@ function applyTheme(theme) {
 		body.classList.toggle('bg-light', state.theme === 'light');
 		clearMatrixCanvas();
 	}
-	document.documentElement.style.colorScheme = state.theme;
+	// Use standard CSS colorScheme property with validated values
+	document.documentElement.style.colorScheme = state.theme === 'light' ? 'light' : 'dark';
 	try {
 		localStorage.setItem(THEME_STORAGE_KEY, state.theme);
 	} catch (err) {
@@ -2107,6 +2108,33 @@ function calculatePasswordStrength(password) {
 	return { score, label, color, percentage };
 }
 
+function applyPasswordStrengthClasses(strengthBar, strengthText, percentage, label) {
+	if (!strengthBar || !strengthText) return;
+	
+	const strengthClasses = ['strength-weak', 'strength-fair', 'strength-good', 'strength-strong'];
+	const textClasses = ['strength-text-weak', 'strength-text-fair', 'strength-text-good', 'strength-text-strong'];
+	
+	let strengthClass = 'strength-weak';
+	let textClass = 'strength-text-weak';
+	
+	if (percentage >= 100) {
+		strengthClass = 'strength-strong';
+		textClass = 'strength-text-strong';
+	} else if (percentage >= 75) {
+		strengthClass = 'strength-good';
+		textClass = 'strength-text-good';
+	} else if (percentage >= 50) {
+		strengthClass = 'strength-fair';
+		textClass = 'strength-text-fair';
+	}
+	
+	strengthBar.classList.remove(...strengthClasses);
+	strengthBar.classList.add(strengthClass);
+	strengthText.textContent = `Password strength: ${label}`;
+	strengthText.classList.remove(...textClasses);
+	strengthText.classList.add(textClass);
+}
+
 async function updatePasswordStrength(password, form) {
 	if (!form) return;
 
@@ -2116,11 +2144,7 @@ async function updatePasswordStrength(password, form) {
 	if (!strengthBar || !strengthText) return;
 
 	if (!password) {
-		strengthBar.classList.remove('strength-fair', 'strength-good', 'strength-strong');
-		strengthBar.classList.add('strength-weak');
-		strengthText.textContent = 'Password strength: Weak';
-		strengthText.classList.remove('strength-text-fair', 'strength-text-good', 'strength-text-strong');
-		strengthText.classList.add('strength-text-weak');
+		applyPasswordStrengthClasses(strengthBar, strengthText, 0, 'Weak');
 		return;
 	}
 
@@ -2136,28 +2160,7 @@ async function updatePasswordStrength(password, form) {
 
 		if (response.ok) {
 			const data = await response.json();
-			// Map percentage to CSS class
-			const strengthClasses = ['strength-weak', 'strength-fair', 'strength-good', 'strength-strong'];
-			const textClasses = ['strength-text-weak', 'strength-text-fair', 'strength-text-good', 'strength-text-strong'];
-			
-			let strengthClass = 'strength-weak';
-			let textClass = 'strength-text-weak';
-			if (data.percentage >= 100) {
-				strengthClass = 'strength-strong';
-				textClass = 'strength-text-strong';
-			} else if (data.percentage >= 75) {
-				strengthClass = 'strength-good';
-				textClass = 'strength-text-good';
-			} else if (data.percentage >= 50) {
-				strengthClass = 'strength-fair';
-				textClass = 'strength-text-fair';
-			}
-			
-			strengthBar.classList.remove(...strengthClasses);
-			strengthBar.classList.add(strengthClass);
-			strengthText.textContent = `Password strength: ${data.label}`;
-			strengthText.classList.remove(...textClasses);
-			strengthText.classList.add(textClass);
+			applyPasswordStrengthClasses(strengthBar, strengthText, data.percentage, data.label);
 		}
 	} catch (e) {
 		// Fallback to client-side if server fails/offline
@@ -2206,28 +2209,7 @@ function setupPasswordStrength() {
 				const strengthBar = form.querySelector('.strength-fill');
 				const strengthText = form.querySelector('.strength-text');
 				if (strengthBar && strengthText) {
-					// Map percentage to CSS class
-					const strengthClasses = ['strength-weak', 'strength-fair', 'strength-good', 'strength-strong'];
-					const textClasses = ['strength-text-weak', 'strength-text-fair', 'strength-text-good', 'strength-text-strong'];
-					
-					let strengthClass = 'strength-weak';
-					let textClass = 'strength-text-weak';
-					if (est.percentage >= 100) {
-						strengthClass = 'strength-strong';
-						textClass = 'strength-text-strong';
-					} else if (est.percentage >= 75) {
-						strengthClass = 'strength-good';
-						textClass = 'strength-text-good';
-					} else if (est.percentage >= 50) {
-						strengthClass = 'strength-fair';
-						textClass = 'strength-text-fair';
-					}
-					
-					strengthBar.classList.remove(...strengthClasses);
-					strengthBar.classList.add(strengthClass);
-					strengthText.textContent = `Password strength: ${est.label}`;
-					strengthText.classList.remove(...textClasses);
-					strengthText.classList.add(textClass);
+					applyPasswordStrengthClasses(strengthBar, strengthText, est.percentage, est.label);
 				}
 			}
 
