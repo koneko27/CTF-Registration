@@ -18,7 +18,8 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
     </style>
-    <link rel="stylesheet" href="assets/css/styles.css">`n    <link rel="stylesheet" href="assets/css/utility.css">
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="assets/css/utility.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
