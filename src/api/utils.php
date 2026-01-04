@@ -267,10 +267,21 @@ function getUserById(int $userId): ?array {
 
 function loginUser(int $userId, string $role, int $tokenVersion = 1): void {
 	start_secure_session();
+	
+	// Preserve CSRF token across session regeneration
+	$csrfToken = $_SESSION['csrf_token'] ?? null;
+	
 	$_SESSION['user_id'] = $userId;
 	$_SESSION['user_role'] = $role;
 	$_SESSION['token_version'] = $tokenVersion;
 	session_regenerate_id(true);
+	
+	// Restore or create new CSRF token after regeneration
+	if ($csrfToken) {
+		$_SESSION['csrf_token'] = $csrfToken;
+	} else {
+		$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+	}
 }
 
 function logoutUser(): void {
