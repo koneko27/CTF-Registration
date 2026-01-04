@@ -183,6 +183,29 @@ function getCurrentUser(): ?array {
 							$userId = $_SESSION['user_id'];
 							$sessionTokenVersion = $_SESSION['token_version'];
 						}
+					} else {
+						// Invalid validator - delete the session and cookie for security
+						try {
+							$delStmt = $pdo->prepare('DELETE FROM user_sessions WHERE selector = :selector');
+							$delStmt->execute([':selector' => $selector]);
+						} catch (Throwable $e) {
+						}
+						setcookie('remember_me', '', time() - 3600, '/', '', false, true);
+					}
+				} else {
+					// Expired or non-existent session - clean up cookie
+					setcookie('remember_me', '', time() - 3600, '/', '', false, true);
+				}
+				
+				// Periodically clean up expired sessions (deterministic time-based approach)
+				// Clean up every 10 minutes at most (tracked per process)
+				static $lastCleanup = 0;
+				if (time() - $lastCleanup > 600) { // 10 minutes
+					try {
+						$cleanupStmt = $pdo->prepare('DELETE FROM user_sessions WHERE expires_at < NOW()');
+						$cleanupStmt->execute();
+						$lastCleanup = time();
+					} catch (Throwable $e) {
 					}
 				}
 			} catch (Throwable $e) {
@@ -244,10 +267,21 @@ function getUserById(int $userId): ?array {
 
 function loginUser(int $userId, string $role, int $tokenVersion = 1): void {
 	start_secure_session();
+	
+	// Preserve CSRF token across session regeneration
+	$csrfToken = $_SESSION['csrf_token'] ?? null;
+	
 	$_SESSION['user_id'] = $userId;
 	$_SESSION['user_role'] = $role;
 	$_SESSION['token_version'] = $tokenVersion;
 	session_regenerate_id(true);
+	
+	// Restore or create new CSRF token after regeneration
+	if ($csrfToken) {
+		$_SESSION['csrf_token'] = $csrfToken;
+	} else {
+		$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+	}
 }
 
 function logoutUser(): void {

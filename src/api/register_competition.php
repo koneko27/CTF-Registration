@@ -82,7 +82,7 @@ try {
 		}
 	}
 
-	$existingStmt = $pdo->prepare('SELECT id FROM competition_registrations WHERE user_id = :user_id AND competition_id = :competition_id LIMIT 1');
+	$existingStmt = $pdo->prepare('SELECT id FROM competition_registrations WHERE user_id = :user_id AND competition_id = :competition_id FOR UPDATE');
 	$existingStmt->execute([
 		':user_id' => $user['id'],
 		':competition_id' => $competitionId,
@@ -93,7 +93,7 @@ try {
 	}
 
 	if ($teamName !== null && $teamName !== '') {
-		$teamCheckStmt = $pdo->prepare('SELECT id FROM competition_registrations WHERE competition_id = :competition_id AND team_name = :team_name LIMIT 1');
+		$teamCheckStmt = $pdo->prepare('SELECT id FROM competition_registrations WHERE competition_id = :competition_id AND team_name = :team_name FOR UPDATE');
 		$teamCheckStmt->execute([
 			':competition_id' => $competitionId,
 			':team_name' => $teamName
