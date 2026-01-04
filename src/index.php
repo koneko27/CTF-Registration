@@ -64,24 +64,24 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
         <div id="not-found" class="page">
             <section class="auth-section">
                 <div class="container">
-                    <div class="auth-content" style="text-align: center; display: block;">
-                        <div class="auth-mascot" style="margin-bottom: 2rem;">
+                    <div class="auth-content auth-content-centered">
+                        <div class="auth-mascot auth-mascot-spacing">
                             <div class="cat-mascot">
                                 <div class="cat-body">
                                     <div class="cat-face">
-                                        <div class="cat-eyes">
-                                            <div class="eye left-eye" style="height: 2px; border-radius: 0;"></div>
-                                            <div class="eye right-eye" style="height: 2px; border-radius: 0;"></div>
+                                        <div class="cat-eyes cat-eyes-sleeping">
+                                            <div class="eye left-eye"></div>
+                                            <div class="eye right-eye"></div>
                                         </div>
                                         <div class="cat-nose"></div>
-                                        <div class="cat-mouth">
-                                            <div class="mouth-left" style="transform: rotate(15deg);"></div>
-                                            <div class="mouth-right" style="transform: rotate(-15deg);"></div>
+                                        <div class="cat-mouth cat-mouth-happy">
+                                            <div class="mouth-left"></div>
+                                            <div class="mouth-right"></div>
                                         </div>
                                     </div>
-                                    <div class="cat-ears">
-                                        <div class="ear ear-left" style="transform: rotate(-20deg);"></div>
-                                        <div class="ear ear-right" style="transform: rotate(20deg);"></div>
+                                    <div class="cat-ears cat-ears-tilted">
+                                        <div class="ear ear-left"></div>
+                                        <div class="ear ear-right"></div>
                                     </div>
                                     <div class="cat-hoodie"></div>
                                 </div>
@@ -91,9 +91,9 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                             </div>
                         </div>
                         
-                        <h1 style="font-family: var(--font-primary); font-size: 4rem; color: var(--primary-color); margin-bottom: 1rem;">404</h1>
-                        <h2 style="color: var(--text-primary); margin-bottom: 1rem;">Page Not Found</h2>
-                        <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 1.1rem;">
+                        <h1 class="error-404-title">404</h1>
+                        <h2 class="error-404-heading">Page Not Found</h2>
+                        <p class="error-404-description">
                             The page you are looking for seems to have vanished into the digital void.<br>
                             Or maybe the cat ate it.
                         </p>
@@ -1002,7 +1002,7 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
                     </div>
 
                     <div id="editCompetitionModal" class="modal">
-                        <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-content modal-content-medium">
                             <div class="modal-header">
                                 <h2>Edit Competition</h2>
                                 <span class="modal-close" data-action="close-modal" data-modal="editCompetitionModal">&times;</span>
