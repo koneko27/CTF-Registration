@@ -164,3 +164,11 @@
 .strength-text-fair { color: #ffc107 !important; }
 .strength-text-good { color: #17a2b8 !important; }
 .strength-text-strong { color: #28a745 !important; }
+
+/* Additional display utilities for profile editor */
+.display-flex { display: flex !important; }
+.display-inline-flex { display: inline-flex !important; }
+
+/* Theme backgrounds */
+.bg-dark { background: #000000 !important; }
+.bg-light { background: transparent !important; }

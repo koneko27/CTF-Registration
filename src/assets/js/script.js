@@ -162,14 +162,11 @@ function applyTheme(theme) {
 	if (body) {
 		body.classList.toggle('theme-light', state.theme === 'light');
 		body.classList.toggle('theme-dark', state.theme !== 'light');
-		if (state.theme === 'dark') {
-			body.style.background = '#000000';
-			clearMatrixCanvas();
-		} else {
-			body.style.background = '';
-			clearMatrixCanvas();
-		}
+		body.classList.toggle('bg-dark', state.theme === 'dark');
+		body.classList.toggle('bg-light', state.theme === 'light');
+		clearMatrixCanvas();
 	}
+	// Use standard CSS colorScheme property with validated values
 	document.documentElement.style.colorScheme = state.theme === 'light' ? 'light' : 'dark';
 	try {
 		localStorage.setItem(THEME_STORAGE_KEY, state.theme);
@@ -294,7 +291,8 @@ function updateAuthVisibility() {
 	const authed = Boolean(state.currentUser);
 	const showWhenAuthed = document.querySelectorAll('[data-auth="protected"]');
 	showWhenAuthed.forEach((el) => {
-		el.style.display = authed ? '' : 'none';
+		el.classList.toggle('auth-hide', !authed);
+		el.classList.toggle('auth-show', authed);
 	});
 
 	const signinLink = document.querySelector('.nav-link[data-page="signin"]');
@@ -520,18 +518,22 @@ function updateProfileSummary() {
 	}
 	if (location) {
 		if (state.currentUser.location) {
-			location.style.display = 'block';
+			location.classList.remove('display-none');
+			location.classList.add('display-block');
 			location.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${escapeHtml(state.currentUser.location)}`;
 		} else {
-			location.style.display = 'none';
+			location.classList.add('display-none');
+			location.classList.remove('display-block');
 		}
 	}
 	if (bioLine && bioText) {
 		if (state.currentUser.bio) {
 			bioText.textContent = state.currentUser.bio;
-			bioLine.style.display = 'block';
+			bioLine.classList.remove('display-none');
+			bioLine.classList.add('display-block');
 		} else {
-			bioLine.style.display = 'none';
+			bioLine.classList.add('display-none');
+			bioLine.classList.remove('display-block');
 		}
 	}
 	if (joined) {
@@ -862,7 +864,9 @@ async function registerForCompetition(competitionId, buttonEl) {
 	form.reset();
 
 	const errorDiv = document.getElementById('registrationError');
-	if (errorDiv) errorDiv.style.display = 'none';
+	if (errorDiv) {
+		errorDiv.classList.add('display-none');
+	}
 
 	modal.classList.add('active');
 
@@ -889,7 +893,9 @@ async function registerForCompetition(competitionId, buttonEl) {
 		const teamName = document.getElementById('regTeamName').value.trim();
 		const notes = document.getElementById('regNotes').value.trim();
 
-		if (errorDiv) errorDiv.style.display = 'none';
+		if (errorDiv) {
+			errorDiv.classList.add('display-none');
+		}
 
 		try {
 			if (button) button.disabled = true;
@@ -913,7 +919,7 @@ async function registerForCompetition(competitionId, buttonEl) {
 		} catch (err) {
 			if (errorDiv) {
 				errorDiv.textContent = err.message;
-				errorDiv.style.display = 'block';
+				errorDiv.classList.remove('display-none');
 			} else {
 				notify(err.message, 'error');
 				showCompetitionAlert(err.message, 'error');
@@ -1200,16 +1206,18 @@ function wireProfileEditor() {
 	if (editBtn && actions) {
 		editBtn.addEventListener('click', () => {
 			formInputs.forEach((input) => (input.disabled = false));
-			actions.style.display = 'flex';
-			editBtn.style.display = 'none';
+			actions.classList.remove('display-none');
+			actions.classList.add('display-flex');
+			editBtn.classList.add('display-none');
 		});
 	}
 
 	if (cancelBtn && editBtn && actions) {
 		cancelBtn.addEventListener('click', () => {
 			formInputs.forEach((input) => (input.disabled = true));
-			actions.style.display = 'none';
-			editBtn.style.display = 'inline-flex';
+			actions.classList.add('display-none');
+			actions.classList.remove('display-flex');
+			editBtn.classList.remove('display-none');
 			populateProfileForm();
 		});
 	}
@@ -1226,7 +1234,7 @@ function wireProfileEditor() {
 		const fileInput = document.createElement('input');
 		fileInput.type = 'file';
 		fileInput.accept = 'image/*';
-		fileInput.style.display = 'none';
+		fileInput.classList.add('display-none');
 		document.body.appendChild(fileInput);
 
 		avatarButton.addEventListener('click', () => fileInput.click());
@@ -1848,8 +1856,9 @@ async function submitProfileUpdate() {
 		if (actions && editBtn) {
 			const formInputs = document.querySelectorAll('#info-tab input, #info-tab textarea');
 			formInputs.forEach((input) => (input.disabled = true));
-			actions.style.display = 'none';
-			editBtn.style.display = 'inline-flex';
+			actions.classList.add('display-none');
+			actions.classList.remove('display-flex');
+			editBtn.classList.remove('display-none');
 		}
 	} catch (err) {
 		notify(err.message, 'error');
@@ -2099,6 +2108,33 @@ function calculatePasswordStrength(password) {
 	return { score, label, color, percentage };
 }
 
+function applyPasswordStrengthClasses(strengthBar, strengthText, percentage, label) {
+	if (!strengthBar || !strengthText) return;
+	
+	const strengthClasses = ['strength-weak', 'strength-fair', 'strength-good', 'strength-strong'];
+	const textClasses = ['strength-text-weak', 'strength-text-fair', 'strength-text-good', 'strength-text-strong'];
+	
+	let strengthClass = 'strength-weak';
+	let textClass = 'strength-text-weak';
+	
+	if (percentage >= 100) {
+		strengthClass = 'strength-strong';
+		textClass = 'strength-text-strong';
+	} else if (percentage >= 75) {
+		strengthClass = 'strength-good';
+		textClass = 'strength-text-good';
+	} else if (percentage >= 50) {
+		strengthClass = 'strength-fair';
+		textClass = 'strength-text-fair';
+	}
+	
+	strengthBar.classList.remove(...strengthClasses);
+	strengthBar.classList.add(strengthClass);
+	strengthText.textContent = `Password strength: ${label}`;
+	strengthText.classList.remove(...textClasses);
+	strengthText.classList.add(textClass);
+}
+
 async function updatePasswordStrength(password, form) {
 	if (!form) return;
 
@@ -2108,9 +2144,7 @@ async function updatePasswordStrength(password, form) {
 	if (!strengthBar || !strengthText) return;
 
 	if (!password) {
-		strengthBar.style.width = '0%';
-		strengthText.textContent = 'Password strength: Weak';
-		strengthText.style.color = '#dc3545';
+		applyPasswordStrengthClasses(strengthBar, strengthText, 0, 'Weak');
 		return;
 	}
 
@@ -2126,10 +2160,7 @@ async function updatePasswordStrength(password, form) {
 
 		if (response.ok) {
 			const data = await response.json();
-			strengthBar.style.width = data.percentage + '%';
-			strengthBar.style.background = data.color;
-			strengthText.textContent = `Password strength: ${data.label}`;
-			strengthText.style.color = data.color;
+			applyPasswordStrengthClasses(strengthBar, strengthText, data.percentage, data.label);
 		}
 	} catch (e) {
 		// Fallback to client-side if server fails/offline
@@ -2178,10 +2209,7 @@ function setupPasswordStrength() {
 				const strengthBar = form.querySelector('.strength-fill');
 				const strengthText = form.querySelector('.strength-text');
 				if (strengthBar && strengthText) {
-					strengthBar.style.width = est.percentage + '%';
-					strengthBar.style.background = est.color;
-					strengthText.textContent = `Password strength: ${est.label}`;
-					strengthText.style.color = est.color;
+					applyPasswordStrengthClasses(strengthBar, strengthText, est.percentage, est.label);
 				}
 			}
 
