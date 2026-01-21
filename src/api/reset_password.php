@@ -22,7 +22,6 @@ if ($newPassword !== $confirmPassword) {
 	json_response(400, ['error' => 'Passwords do not match']);
 }
 
-// Validate password strength
 if (strlen($newPassword) < 12 || strlen($newPassword) > 128) {
 	json_response(400, ['error' => 'Password must be between 12 and 128 characters']);
 }
@@ -35,10 +34,8 @@ try {
 	$pdo = get_pdo();
 	ensure_required_tables($pdo);
 
-	// Hash the token to look it up
 	$tokenHash = hash('sha256', $token);
 
-	// Find valid, unused, non-expired token
 	$stmt = $pdo->prepare('SELECT pr.id, pr.user_id, pr.expires_at, pr.used, u.email, u.full_name 
 		FROM password_resets pr 
 		JOIN users u ON pr.user_id = u.id 
@@ -47,21 +44,17 @@ try {
 	$stmt->execute([':token_hash' => $tokenHash]);
 	$reset = $stmt->fetch(PDO::FETCH_ASSOC);
 
-	// Constant-time validation checks to prevent timing attacks
 	$isValid = $reset && !$reset['used'] && strtotime($reset['expires_at']) >= time();
 	
-	// Add artificial delay to normalize timing
-	usleep(random_int(50000, 150000)); // 50-150ms random delay
+	usleep(random_int(50000, 150000));
 	
 	if (!$isValid) {
 		json_response(400, ['error' => 'Invalid or expired reset token']);
 	}
 
-	// All validations passed - reset the password
 	$pdo->beginTransaction();
 
 	try {
-		// Update password and token version (invalidates all sessions)
 		$newPasswordHash = password_hash($newPassword, PASSWORD_DEFAULT);
 		$updateStmt = $pdo->prepare('UPDATE users SET password_hash = :password_hash, token_version = token_version + 1, updated_at = NOW() WHERE id = :user_id');
 		$updateStmt->execute([
@@ -69,18 +62,14 @@ try {
 			':user_id' => $reset['user_id']
 		]);
 
-		// Mark token as used and delete it (defense-in-depth)
 		$markUsedStmt = $pdo->prepare('DELETE FROM password_resets WHERE id = :id');
 		$markUsedStmt->execute([':id' => $reset['id']]);
 
-		// Delete all remember-me sessions for this user
 		$deleteSessionsStmt = $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :user_id');
 		$deleteSessionsStmt->execute([':user_id' => $reset['user_id']]);
 
-		// Commit transaction
 		$pdo->commit();
 
-		// Record activity
 		record_activity((int)$reset['user_id'], 'auth.password_reset_completed', 'Password was reset successfully');
 
 		error_log('Password reset successful for user ID: ' . $reset['user_id']);

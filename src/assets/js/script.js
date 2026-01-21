@@ -22,7 +22,6 @@ const THEME_STORAGE_KEY = 'koneko-theme';
 
 document.addEventListener('DOMContentLoaded', init);
 
-// Event delegation for navigation
 document.addEventListener('click', function (e) {
 	const navigateTarget = e.target.closest('[data-action="navigate"]');
 	if (navigateTarget) {
@@ -58,9 +57,6 @@ async function init() {
 		setupAdminUI();
 		initMatrixRain();
 
-		// Race condition: Session refresh vs Timeout
-		// Ensures loader doesn't stick for more than 1.5s even if network hangs
-		// But waits at least 200ms for smooth animation
 		const minLoadTime = new Promise(resolve => setTimeout(resolve, 800));
 		const sessionTask = refreshSession();
 		const maxWaitTime = new Promise(resolve => setTimeout(resolve, 1500));
@@ -117,7 +113,7 @@ function hideLoader() {
 		loader.classList.add('hidden');
 		setTimeout(() => {
 			loader.remove();
-		}, 200); // Match CSS transition duration
+		}, 200);
 	}
 }
 
@@ -130,7 +126,6 @@ function notify(message, type = 'info') {
 		document.body.appendChild(el);
 	}
 
-	// Set notification type using CSS classes
 	el.className = `notification notification-${type}`;
 	el.textContent = message;
 
@@ -166,7 +161,6 @@ function applyTheme(theme) {
 		body.classList.toggle('bg-light', state.theme === 'light');
 		clearMatrixCanvas();
 	}
-	// Use standard CSS colorScheme property with validated values
 	document.documentElement.style.colorScheme = state.theme === 'light' ? 'light' : 'dark';
 	try {
 		localStorage.setItem(THEME_STORAGE_KEY, state.theme);
@@ -303,7 +297,6 @@ function updateAuthVisibility() {
 	const adminLink = document.getElementById('admin-link');
 	const homeLink = document.querySelector('.nav-link[data-page="home"]');
 
-	// Use CSS classes instead of inline styles for CSP compliance
 	if (signinLink) signinLink.classList.toggle('auth-hide', authed);
 	if (signupLink) signupLink.classList.toggle('auth-hide', authed);
 	if (logoutLink) logoutLink.classList.toggle('auth-hide', !authed);
@@ -1023,7 +1016,6 @@ function wireAuthForms() {
 		});
 	}
 
-	// Terms of Service and Privacy Policy Modal Logic
 	const policyLinks = document.querySelectorAll('.policy-link');
 	const policyModal = document.getElementById('policyModal');
 	const closePolicyModal = document.getElementById('closePolicyModal');
@@ -1124,7 +1116,6 @@ function wireAuthForms() {
 		});
 	}
 
-	// Forgot Password Form
 	const forgotPasswordForm = document.getElementById('forgot-password-form');
 	if (forgotPasswordForm) {
 		forgotPasswordForm.addEventListener('submit', async (event) => {
@@ -1149,7 +1140,6 @@ function wireAuthForms() {
 		});
 	}
 
-	// Reset Password Form
 	const resetPasswordForm = document.getElementById('reset-password-form');
 	if (resetPasswordForm) {
 		resetPasswordForm.addEventListener('submit', async (event) => {
@@ -1941,7 +1931,6 @@ async function performSignOut() {
 	state.recentActivity = [];
 	applyUserToUI();
 
-	// Clear signin form
 	const signinForm = document.getElementById('signin-form');
 	if (signinForm) {
 		const identifierInput = signinForm.querySelector('input[name="identifier"]');
@@ -1989,7 +1978,7 @@ async function ensureCsrfToken() {
 
 async function apiRequest(path, options = {}) {
 	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+	const timeoutId = setTimeout(() => controller.abort(), 10000);
 	const opts = { credentials: 'include', requireCsrf: true, signal: controller.signal, ...options };
 	const method = (opts.method || 'GET').toUpperCase();
 	const safeMethod = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
@@ -2072,7 +2061,6 @@ function calculatePasswordStrength(password) {
 	let score = 0;
 	if (!password) return { score: 0, label: 'Weak', color: '#dc3545', percentage: 0 };
 
-	// Client-side estimation (mirrors server logic for instant feedback)
 	if (password.length >= 12) score++;
 	if (password.length >= 16) score++;
 	if (/[A-Z]/.test(password)) score++;
@@ -2148,7 +2136,6 @@ async function updatePasswordStrength(password, form) {
 		return;
 	}
 
-	// Server-side validation (Authoritative)
 	try {
 		const response = await fetch('api/check_password_strength.php', {
 			method: 'POST',
@@ -2163,8 +2150,7 @@ async function updatePasswordStrength(password, form) {
 			applyPasswordStrengthClasses(strengthBar, strengthText, data.percentage, data.label);
 		}
 	} catch (e) {
-		// Fallback to client-side if server fails/offline
-		// (Already handled by immediate update in input listener)
+
 	}
 }
 
@@ -2185,7 +2171,6 @@ function setupPasswordToggles() {
 }
 
 function setupPasswordStrength() {
-	// Select password inputs from both signup and reset password forms
 	const passwordInputs = document.querySelectorAll('#signup-form input[name="password"], #reset-password-form input[name="newPassword"]');
 
 	if (!passwordInputs.length) {
@@ -2202,7 +2187,6 @@ function setupPasswordStrength() {
 			const val = e.target.value;
 			const form = passwordInput.closest('form');
 
-			// 1. Immediate Client-Side Feedback (For "Instant" feel)
 			const est = calculatePasswordStrength(val);
 
 			if (form) {
@@ -2213,9 +2197,6 @@ function setupPasswordStrength() {
 				}
 			}
 
-			// 2. Debounced Server-Side Validation (For Accuracy/Security)
-			// Only needed if we want server-side check, but client-side is usually enough for UI feedback
-			// Keeping it for consistency if the backend API supports it
 			clearTimeout(debounceTimer);
 			debounceTimer = setTimeout(() => {
 				updatePasswordStrength(val, form);
@@ -2223,7 +2204,6 @@ function setupPasswordStrength() {
 		});
 
 		passwordInput.dataset.strengthSetup = 'true';
-		// Initial check
 		if (passwordInput.value) {
 			passwordInput.dispatchEvent(new Event('input'));
 		}

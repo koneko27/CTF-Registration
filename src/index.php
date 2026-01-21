@@ -1268,7 +1268,6 @@ header('Content-Security-Policy: ' . get_csp_header($nonce));
 
     <script src="assets/js/script.js?v=2.1"></script>
     <script nonce="<?= htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8') ?>">
-        // Failsafe: Ensure loader is removed after 5 seconds even if script.js fails
         setTimeout(function() {
             var loader = document.getElementById('page-loader');
             if (loader && !loader.classList.contains('hidden')) {

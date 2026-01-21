@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/utils.php';
 
-// Manually check HTTP method without CSRF - this is a read-only public endpoint
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Allow: POST');
     json_response(405, ['error' => 'Method Not Allowed']);
@@ -10,9 +9,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = require_json_input();
 $password = (string) ($input['password'] ?? '');
 
-// Rate limit password check to prevent abuse
 $rateLimitKey = 'pwd_check_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-if (!check_rate_limit($rateLimitKey, 60, 60)) { // 60 checks per minute
+if (!check_rate_limit($rateLimitKey, 60, 60)) {
     json_response(429, ['error' => 'Too many requests.', 'score' => 0]);
 }
 
@@ -23,11 +21,9 @@ if ($password === '') {
 $score = 0;
 $feedback = [];
 
-// Length Check
 if (strlen($password) >= 12) $score++;
 if (strlen($password) >= 16) $score++;
 
-// Complexity Checks
 if (preg_match('/[A-Z]/', $password)) $score++;
 if (preg_match('/[a-z]/', $password)) $score++;
 if (preg_match('/[0-9]/', $password)) $score++;

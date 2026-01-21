@@ -60,7 +60,7 @@ try {
 	
 	$passwordValid = password_verify($password, $storedHash);
 	
-	// Record failed login attempt (always execute to normalize timing)
+	
 	if ($user && (!$passwordValid || !$user)) {
 		try {
 			error_log('Failed login attempt for identifier: ' . $identifier . ' from IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
@@ -84,7 +84,7 @@ try {
 				error_log('Account locked for user ID ' . $user['id'] . ' due to failed login attempts');
 			}
 		} catch (Throwable $e) {
-			// Ignore if failed_login_attempts table doesn't exist yet
+
 		}
 	}
 	
@@ -94,20 +94,17 @@ try {
 		json_response(401, ['error' => 'Invalid credentials']);
 	}
 
-	// Clear failed login attempts on successful login
 	try {
 		$clearStmt = $pdo->prepare('DELETE FROM failed_login_attempts WHERE identifier = :identifier');
 		$clearStmt->execute([':identifier' => strtolower($identifier)]);
 		
-		// Clear account lock if any
 		$unlockStmt = $pdo->prepare('UPDATE users SET locked_until = NULL WHERE id = :user_id AND locked_until IS NOT NULL');
 		$unlockStmt->execute([':user_id' => $user['id']]);
 	} catch (Throwable $e) {
-		// Ignore if tables don't exist yet
+
 	}
 	
 	loginUser((int) $user['id'], (string) $user['role'], (int) ($user['token_version'] ?? 1));
-	// Rotate CSRF token for the new authenticated session
 	$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 	
 	record_activity((int) $user['id'], 'auth.signin', 'User signed in', ['identifier' => $identifier]);
@@ -117,7 +114,7 @@ try {
 		$selector = bin2hex(random_bytes(12));
 		$validator = bin2hex(random_bytes(32));
 		$hashedValidator = hash('sha256', $validator);
-		$expiresAt = date('Y-m-d H:i:s', time() + 86400 * 30); // 30 days
+		$expiresAt = date('Y-m-d H:i:s', time() + 86400 * 30);
 
 		$stmt = $pdo->prepare('INSERT INTO user_sessions (user_id, selector, hashed_validator, expires_at) VALUES (:uid, :sel, :val, :exp)');
 		$stmt->execute([

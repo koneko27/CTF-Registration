@@ -3,7 +3,6 @@ require_once __DIR__ . '/utils.php';
 
 ensure_http_method('POST');
 
-// Clear remember me
 if (isset($_COOKIE['remember_me'])) {
 	$parts = explode(':', $_COOKIE['remember_me']);
 	if (count($parts) === 2) {

@@ -7,16 +7,11 @@ if ($databaseUrl === false || $databaseUrl === '') {
 
 define('DATABASE_URL', $databaseUrl);
 
-// Prevent Host Header Injection by requiring APP_URL environment variable
-// SECURITY: Never use HTTP_HOST header as it's user-controlled
 $appUrl = getenv('APP_URL');
 if (!$appUrl) {
-    // Development-only fallback - NEVER use HTTP_HOST in production
-    // This fallback should only be used in local development
     if (getenv('ENVIRONMENT') === 'production') {
         throw new RuntimeException('APP_URL environment variable is required in production.');
     }
-    // Safe localhost-only fallback for development
     $appUrl = 'http://localhost:9000';
     error_log('WARNING: Using localhost fallback for APP_URL. Set APP_URL environment variable.');
 }

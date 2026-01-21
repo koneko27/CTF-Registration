@@ -31,8 +31,6 @@ try {
 		if (!empty($activity['created_at'])) {
 			try {
 				$tz = get_app_timezone();
-				// Assume DB stores timestamps in the application timezone (WIB/Jakarta)
-				// as configured in utils.php
 				$createdAt = new DateTimeImmutable($activity['created_at'], $tz);
 				$activity['created_at'] = $createdAt->format(DateTimeInterface::ATOM);
 				$activity['created_at_epoch_ms'] = (int) ($createdAt->format('U')) * 1000;

@@ -107,7 +107,6 @@ try {
             break;
 
 		case 'POST':
-			// Rate limit: 1 creation per 5 minutes per admin
 			$creationRateLimitKey = 'admin_create_comp_' . $admin['id'];
 			if (!check_rate_limit($creationRateLimitKey, 1, 300)) {
 				json_response(429, ['error' => 'You can only create one competition every 5 minutes.']);
@@ -155,7 +154,6 @@ try {
                 json_response(400, ['error' => 'End date must be after start date']);
             }
 
-            // Validate date ranges (must be within reasonable future timeframe)
             $maxFutureYears = 5;
             $minDate = new DateTime();
             $maxDate = (new DateTime())->modify("+$maxFutureYears years");
@@ -195,7 +193,6 @@ try {
                 json_response(400, ['error' => 'Banner image must be smaller than 5MB']);
             }
 
-            // Validate magic bytes for image formats
             $magicBytes = substr($bannerBinary, 0, 12);
             $validJpeg = (substr($magicBytes, 0, 3) === "\xFF\xD8\xFF");
             $validPng = (substr($magicBytes, 0, 8) === "\x89PNG\r\n\x1a\n");
@@ -408,7 +405,6 @@ try {
                     json_response(400, ['error' => 'Banner image must be smaller than 5MB']);
                 }
 
-                // Validate magic bytes for image formats
                 $magicBytes = substr($bannerBinary, 0, 12);
                 $validJpeg = (substr($magicBytes, 0, 3) === "\xFF\xD8\xFF");
                 $validPng = (substr($magicBytes, 0, 8) === "\x89PNG\r\n\x1a\n");

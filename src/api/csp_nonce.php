@@ -1,6 +1,5 @@
 <?php
 function generate_csp_nonce(): string {
-	// Generate a unique nonce per request for better security
 	return base64_encode(random_bytes(16));
 }
 

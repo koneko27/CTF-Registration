@@ -89,7 +89,6 @@ try {
 		$updates[] = 'password_hash = :password_hash';
 		$params['password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
 
-		// Invalidate other sessions
 		$updates[] = 'token_version = token_version + 1';
 		$passwordChanged = true;
 	}
@@ -111,14 +110,12 @@ try {
 		json_response(400, ['error' => 'No valid fields to update']);
 	}
 
-	// Use transaction for atomic email uniqueness check and password changes
 	$needsTransaction = $passwordChanged || isset($params['email']);
 	if ($needsTransaction) {
 		$pdo->beginTransaction();
 	}
 
 	try {
-		// Atomic email uniqueness check with row locking
 		if (isset($params['email'])) {
 			$check = $pdo->prepare('SELECT 1 FROM users WHERE email = :email AND id <> :id FOR UPDATE');
 			$check->execute([':email' => $params['email'], ':id' => $user['id']]);
@@ -136,17 +133,14 @@ try {
 		$newTokenVersion = $stmt->fetchColumn();
 
 		if ($passwordChanged) {
-			// Invalidate all remember me sessions for this user
 			$deleteSessionsStmt = $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :user_id');
 			$deleteSessionsStmt->execute([':user_id' => $user['id']]);
 			
-			// Update current session token version if password changed, so this user isn't logged out
 			if ($newTokenVersion) {
 				$_SESSION['token_version'] = (int)$newTokenVersion;
 			}
 		}
 
-		// Commit the transaction if one was started
 		if ($needsTransaction) {
 			$pdo->commit();
 		}

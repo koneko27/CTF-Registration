@@ -49,7 +49,7 @@ try {
 				WHERE cr.payment_status IN (\'pending\', \'unpaid\')
 				ORDER BY cr.registered_at DESC');
 			json_response(200, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
-			break; // Correctly added break
+			break;
 		}
 		case 'POST': {
 			$data = payment_payload();

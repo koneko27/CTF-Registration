@@ -1,13 +1,7 @@
 <?php
-
-/**
- * Email utility for sending emails via Gmail SMTP
- */
-
 require_once __DIR__ . '/config.php';
 
 function sanitize_email_header(string $value): string {
-	// Remove CRLF sequences to prevent email header injection
 	return str_replace(["\r", "\n", "%0a", "%0d", "\x00"], '', $value);
 }
 
@@ -28,7 +22,6 @@ function send_email(string $to, string $toName, string $subject, string $htmlBod
 	error_log("[EMAIL] Using SMTP: $smtpHost:$smtpPort with username: $smtpUsername");
 
 	try {
-		// Create SMTP connection
 		error_log("[EMAIL] Connecting to SMTP server...");
 		$smtp = fsockopen($smtpHost, $smtpPort, $errno, $errstr, 10);
 		if (!$smtp) {
@@ -36,7 +29,6 @@ function send_email(string $to, string $toName, string $subject, string $htmlBod
 			return false;
 		}
 
-		// Helper function to read and log SMTP responses
 		$readResponse = function() use ($smtp, &$lastResponse) {
 			$response = fgets($smtp, 512);
 			$lastResponse = $response;
@@ -44,19 +36,15 @@ function send_email(string $to, string $toName, string $subject, string $htmlBod
 			return $response;
 		};
 
-		// Read server greeting
 		error_log("[EMAIL] Reading server greeting...");
 		$readResponse();
 
-		// Send EHLO
 		error_log("[EMAIL] Sending EHLO...");
 		fputs($smtp, "EHLO " . gethostname() . "\r\n");
-		// Read all EHLO responses until we get a line that doesn't start with 250-
 		do {
 			$response = $readResponse();
 		} while (strpos($response, '250-') === 0);
 
-		// Start TLS
 		error_log("[EMAIL] Starting TLS...");
 		fputs($smtp, "STARTTLS\r\n");
 		$tlsResponse = $readResponse();
@@ -75,14 +63,12 @@ function send_email(string $to, string $toName, string $subject, string $htmlBod
 			return false;
 		}
 
-		// Send EHLO again after TLS
 		error_log("[EMAIL] Sending EHLO after TLS...");
 		fputs($smtp, "EHLO " . gethostname() . "\r\n");
 		do {
 			$response = $readResponse();
 		} while (strpos($response, '250-') === 0);
 
-		// Authenticate
 		error_log("[EMAIL] Starting authentication...");
 		fputs($smtp, "AUTH LOGIN\r\n");
 		$authInitResponse = $readResponse();
@@ -120,7 +106,6 @@ function send_email(string $to, string $toName, string $subject, string $htmlBod
 
 		error_log("[EMAIL] Authentication successful!");
 
-		// Send email
 		error_log("[EMAIL] Sending MAIL FROM...");
 		fputs($smtp, "MAIL FROM: <$fromEmail>\r\n");
 		$mailFromResponse = $readResponse();
@@ -151,7 +136,6 @@ function send_email(string $to, string $toName, string $subject, string $htmlBod
 			return false;
 		}
 
-		// Email headers and body
 		$boundary = md5(uniqid(time()));
 		$safeFromName = sanitize_email_header($fromName);
 		$headers = "From: $safeFromName <$fromEmail>\r\n";
@@ -188,7 +172,6 @@ function send_email(string $to, string $toName, string $subject, string $htmlBod
 
 		error_log("[EMAIL] Email sent successfully!");
 
-		// Quit
 		fputs($smtp, "QUIT\r\n");
 		$readResponse();
 		fclose($smtp);

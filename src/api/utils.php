@@ -128,7 +128,6 @@ function start_secure_session(): void {
 }
 
 function ensure_http_method(string ...$allowed): void {
-	// Check if last parameter is boolean indicating to skip CSRF
 	$skipCsrf = false;
 	if (count($allowed) > 0 && is_bool(end($allowed))) {
 		$skipCsrf = array_pop($allowed);
@@ -157,7 +156,6 @@ function getCurrentUser(): ?array {
 
 	$pdo = get_pdo();
 
-	// Attempt Remember Me login if session is missing
 	if (!$userId && isset($_COOKIE['remember_me'])) {
 		$parts = explode(':', $_COOKIE['remember_me']);
 		if (count($parts) === 2) {
@@ -165,9 +163,6 @@ function getCurrentUser(): ?array {
 			$validator = $parts[1];
 			
 			try {
-				// Ensure tables exist before checking (if not already)
-				// ensure_required_tables($pdo); // Can be expensive to call every time, rely on init or catch
-				
 				$stmt = $pdo->prepare('SELECT user_id, hashed_validator, expires_at FROM user_sessions WHERE selector = :selector');
 				$stmt->execute([':selector' => $selector]);
 				$rememberSession = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -184,7 +179,6 @@ function getCurrentUser(): ?array {
 							$sessionTokenVersion = $_SESSION['token_version'];
 						}
 					} else {
-						// Invalid validator - delete the session and cookie for security
 						try {
 							$delStmt = $pdo->prepare('DELETE FROM user_sessions WHERE selector = :selector');
 							$delStmt->execute([':selector' => $selector]);
@@ -193,14 +187,11 @@ function getCurrentUser(): ?array {
 						setcookie('remember_me', '', time() - 3600, '/', '', false, true);
 					}
 				} else {
-					// Expired or non-existent session - clean up cookie
 					setcookie('remember_me', '', time() - 3600, '/', '', false, true);
 				}
-				
-				// Periodically clean up expired sessions (deterministic time-based approach)
-				// Clean up every 10 minutes at most (tracked per process)
+
 				static $lastCleanup = 0;
-				if (time() - $lastCleanup > 600) { // 10 minutes
+				if (time() - $lastCleanup > 600) 
 					try {
 						$cleanupStmt = $pdo->prepare('DELETE FROM user_sessions WHERE expires_at < NOW()');
 						$cleanupStmt->execute();
@@ -226,7 +217,6 @@ function getCurrentUser(): ?array {
 		return null;
 	}
 
-	// Check if session token version matches DB
 	$dbTokenVersion = (int)($user['token_version'] ?? 1);
 	if ($sessionTokenVersion !== $dbTokenVersion) {
 		logoutUser();
@@ -268,7 +258,6 @@ function getUserById(int $userId): ?array {
 function loginUser(int $userId, string $role, int $tokenVersion = 1): void {
 	start_secure_session();
 	
-	// Preserve CSRF token across session regeneration
 	$csrfToken = $_SESSION['csrf_token'] ?? null;
 	
 	$_SESSION['user_id'] = $userId;
@@ -276,7 +265,6 @@ function loginUser(int $userId, string $role, int $tokenVersion = 1): void {
 	$_SESSION['token_version'] = $tokenVersion;
 	session_regenerate_id(true);
 	
-	// Restore or create new CSRF token after regeneration
 	if ($csrfToken) {
 		$_SESSION['csrf_token'] = $csrfToken;
 	} else {

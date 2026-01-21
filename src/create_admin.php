@@ -4,7 +4,6 @@ require_once __DIR__ . '/api/db.php';
 
 $pdo = get_pdo();
 
-// Check if admin exists
 $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
 $adminCount = $stmt->fetchColumn();
 
@@ -18,7 +17,6 @@ if ($adminCount > 0) {
     exit(0);
 }
 
-// Create default admin
 $adminPassword = 'Admin@CTF2024!';
 $passwordHash = password_hash($adminPassword, PASSWORD_DEFAULT);
 

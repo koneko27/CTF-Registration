@@ -31,20 +31,15 @@ try {
 	$pdo = get_pdo();
 	ensure_required_tables($pdo);
 
-	// Check if user exists (but don't reveal this to prevent email enumeration)
 	$stmt = $pdo->prepare('SELECT id, full_name, email FROM users WHERE email = :email LIMIT 1');
 	$stmt->execute([':email' => $email]);
 	$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-	// Always return success to prevent email enumeration
-	// Only send email if user actually exists
 	if ($user) {
-		// Generate secure reset token
 		$token = bin2hex(random_bytes(32));
 		$tokenHash = hash('sha256', $token);
 		$expiresAt = date('Y-m-d H:i:s', time() + ((int)(getenv('PASSWORD_RESET_EXPIRY') ?: 3600)));
 
-		// Check if password_resets table exists, if not create it
 		try {
 			$pdo->exec("CREATE TABLE IF NOT EXISTS password_resets (
 				id BIGSERIAL PRIMARY KEY,
@@ -56,14 +51,12 @@ try {
 			)");
 			$pdo->exec("CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets (token_hash)");
 		} catch (Throwable $e) {
-			// Table might already exist, ignore
+	
 		}
 
-		// Delete old unused tokens for this user
 		$deleteStmt = $pdo->prepare('DELETE FROM password_resets WHERE user_id = :user_id AND (used = TRUE OR expires_at < NOW())');
 		$deleteStmt->execute([':user_id' => $user['id']]);
 
-		// Insert new reset token
 		$insertStmt = $pdo->prepare('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (:user_id, :token_hash, :expires_at)');
 		$insertStmt->execute([
 			':user_id' => $user['id'],
@@ -71,7 +64,6 @@ try {
 			':expires_at' => $expiresAt
 		]);
 
-		// Send email
 		$emailSent = send_password_reset_email($user['email'], $user['full_name'], $token);
 
 		if ($emailSent) {
@@ -81,10 +73,8 @@ try {
 		}
 	}
 	
-	// Add artificial delay to normalize timing and prevent email enumeration
-	usleep(random_int(200000, 400000)); // 200-400ms random delay
+	usleep(random_int(200000, 400000));
 
-	// Always return success (even if email doesn't exist) to prevent email enumeration
 	json_response(200, [
 		'message' => 'If an account exists with this email, a password reset link has been sent. Please check your inbox.'
 	]);

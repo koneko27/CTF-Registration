@@ -31,7 +31,6 @@ if (!validate_email($email)) {
 	json_response(400, ['error' => 'Invalid email format']);
 }
 
-// Normalize email to lowercase for domain check to prevent bypass
 $emailLower = strtolower($email);
 $allowedDomains = ['gmail.com', 'binus.ac.id'];
 $domain = substr(strrchr($emailLower, '@'), 1);
@@ -76,14 +75,11 @@ try {
 
 	json_response(201, ['message' => 'Account created successfully']);
 } catch (PDOException $e) {
-	// Handle duplicate email/username violations with clear user-facing error
 	if ($e->getCode() === '23505') {
 		error_log('signup duplicate detected: ' . $e->getMessage());
-		// Return user-friendly error without revealing which field is duplicate (security)
 		json_response(400, ['error' => 'Email or username already registered. Please use a different one.']);
 	} else {
 		error_log('signup failed: ' . $e->getMessage());
-		// Generic error for non-duplicate failures
 		json_response(500, ['error' => 'Server error. Please try again later.']);
 	}
 }
